@@ -7,7 +7,8 @@ import { openDatabase } from './database';
  * @param accountId - アプリ内アカウントID
  * @returns キー範囲
  */
-const accountKeyRange = (accountId: string) => IDBKeyRange.bound([accountId], [accountId, []]);
+export const accountKeyRange = (accountId: string) =>
+	IDBKeyRange.bound([accountId], [accountId, []]);
 
 /**
  * 登録済みのアカウント一覧を取得する

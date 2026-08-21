@@ -36,7 +36,8 @@
 		"unicorn/no-null": "off",
 		"import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
 		"eslint/no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
-		"eslint/one-var": "off"
+		"eslint/one-var": "off",
+		"promise/avoid-new": "off"
 	},
 	"overrides": [
 		{

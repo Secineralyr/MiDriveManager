@@ -1,21 +1,29 @@
 <script lang="ts">
 	import AccountMenu from '$components/organisms/AccountMenu.svelte';
 	import type { AccountRecord } from '../../lib/db/schema';
+	import SyncIndicator from '$components/molecules/SyncIndicator.svelte';
 
 	type Props = {
 		/** アカウント一覧 */
 		accounts: AccountRecord[];
 		/** アクティブなアカウント */
 		active: AccountRecord;
+		/** 同期の状態 */
+		syncStatus: 'idle' | 'syncing' | 'error';
+		/** 同期で取得済みの項目数 */
+		syncCount: number;
 		/** アカウント切替時の処理 */
 		onswitch: (accountId: string) => void;
 		/** アカウント追加開始時の処理 */
 		onadd: () => void;
 		/** アカウント削除確定時の処理 */
 		onremove: (accountId: string) => void;
+		/** 再同期要求時の処理 */
+		onresync: () => void;
 	};
 
-	let { accounts, active, onswitch, onadd, onremove }: Props = $props();
+	let { accounts, active, syncStatus, syncCount, onswitch, onadd, onremove, onresync }: Props =
+		$props();
 </script>
 
 <header>
@@ -25,6 +33,7 @@
 			<p>misskeyDriveManager</p>
 		</div>
 		<div>
+			<SyncIndicator status={syncStatus} count={syncCount} onretry={onresync} />
 			<AccountMenu {accounts} {active} {onswitch} {onadd} {onremove} />
 		</div>
 	</div>

@@ -5,6 +5,7 @@
 	import Spinner from '$components/atoms/Spinner.svelte';
 	import { accountsStore } from './lib/stores/accounts.svelte';
 	import { onMount } from 'svelte';
+	import { syncStore } from './lib/stores/sync.svelte';
 
 	/** 表示する画面の種類 */
 	type Screen = 'loading' | 'wizard' | 'main';
@@ -125,7 +126,20 @@
 		}
 	};
 
+	/** アクティブアカウントの同期を開始する */
+	const handleResync = () => {
+		if (activeAccount !== null) {
+			syncStore.run(activeAccount);
+		}
+	};
+
 	onMount(initialize);
+
+	$effect(() => {
+		if (screen === 'main' && activeAccount !== null) {
+			syncStore.run(activeAccount);
+		}
+	});
 </script>
 
 {#if screen === 'loading'}
@@ -144,12 +158,22 @@
 	<AppHeader
 		accounts={accountsStore.accounts}
 		active={activeAccount}
+		syncStatus={syncStore.status}
+		syncCount={syncStore.folderCount + syncStore.fileCount}
 		onswitch={handleSwitch}
 		onadd={handleAdd}
 		onremove={handleRemove}
+		onresync={handleResync}
 	/>
 	<main>
-		<p>ドライブの閲覧機能は次のフェーズで実装します。</p>
+		{#if syncStore.status === 'idle' && syncStore.accountId === activeAccount.id}
+			<p>
+				フォルダ{syncStore.folderCount}件・ファイル{syncStore.fileCount}件を同期しました。
+				閲覧機能は次のフェーズで実装します。
+			</p>
+		{:else}
+			<p>ドライブの閲覧機能は次のフェーズで実装します。</p>
+		{/if}
 	</main>
 {/if}
 

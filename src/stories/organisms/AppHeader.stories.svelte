@@ -26,8 +26,39 @@
 	args={{
 		accounts: [primaryAccount],
 		active: primaryAccount,
+		syncStatus: 'idle',
+		syncCount: 0,
 		onswitch: () => {},
 		onadd: () => {},
 		onremove: () => {},
+		onresync: () => {},
+	}}
+/>
+
+<Story
+	name="同期中"
+	args={{
+		accounts: [primaryAccount],
+		active: primaryAccount,
+		syncStatus: 'syncing',
+		syncCount: 320,
+		onswitch: () => {},
+		onadd: () => {},
+		onremove: () => {},
+		onresync: () => {},
+	}}
+/>
+
+<Story
+	name="同期エラー"
+	args={{
+		accounts: [primaryAccount],
+		active: primaryAccount,
+		syncStatus: 'error',
+		syncCount: 0,
+		onswitch: () => {},
+		onadd: () => {},
+		onremove: () => {},
+		onresync: () => {},
 	}}
 />
