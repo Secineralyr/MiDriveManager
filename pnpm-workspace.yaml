@@ -1,4 +1,4 @@
 allowBuilds:
-  '@swc/core': true
-  esbuild: true
-  svelte-preprocess: true
+    '@swc/core': true
+    esbuild: true
+    svelte-preprocess: true

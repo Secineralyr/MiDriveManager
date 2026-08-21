@@ -1,9 +1,10 @@
 import './app.css';
 import App from './App.svelte';
-import { mount } from "svelte";
+import { mount } from 'svelte';
 
-const app = mount(App, {
-  target: document.getElementById('app'),
-});
+const target = document.querySelector('#app');
+if (!target) {
+	throw new Error('Root element "#app" was not found');
+}
 
-export default app;
+mount(App, { target });

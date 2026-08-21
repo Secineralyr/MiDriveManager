@@ -1,0 +1,68 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node", "jsdoc"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error",
+		"pedantic": "error",
+		"style": "error",
+		"perf": "error",
+		"restriction": "off",
+		"nursery": "off"
+	},
+	"rules": {
+		"typescript/no-explicit-any": "error",
+		"typescript/no-non-null-assertion": "error",
+		"typescript/no-namespace": "error",
+		"typescript/consistent-type-definitions": ["error", "type"],
+		"unicorn/no-array-for-each": "error",
+		"import/no-default-export": "error",
+		"eslint/no-var": "error",
+		"eslint/eqeqeq": "error",
+		"eslint/no-delete-var": "error",
+		"eslint/curly": ["error", "all"],
+		"import/no-named-export": "off",
+		"import/prefer-default-export": "off",
+		"eslint/sort-keys": "off",
+		"eslint/capitalized-comments": "off",
+		"eslint/no-ternary": "off",
+		"eslint/id-length": "off",
+		"eslint/no-magic-numbers": "off",
+		"import/group-exports": "off",
+		"jsdoc/require-param-type": "off",
+		"jsdoc/require-returns-type": "off",
+		"typescript/prefer-readonly-parameter-types": "off",
+		"typescript/consistent-return": "off",
+		"unicorn/no-null": "off",
+		"import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+		"eslint/no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }]
+	},
+	"overrides": [
+		{
+			"files": ["**/*.test.ts"],
+			"plugins": ["vitest"],
+			"rules": {
+				"vitest/no-importing-vitest-globals": "off",
+				"vitest/prefer-lowercase-title": "off",
+				"vitest/warn-todo": "off",
+				"vitest/prefer-to-be-truthy": "off",
+				"vitest/prefer-to-be-falsy": "off"
+			}
+		},
+		{
+			"files": ["**/*.config.ts", "**/*.config.js"],
+			"rules": {
+				"import/no-default-export": "off"
+			}
+		},
+		{
+			"files": ["**/*.svelte"],
+			"rules": {
+				"unicorn/filename-case": ["error", { "case": "pascalCase" }]
+			}
+		}
+	],
+	"options": {
+		"typeAware": true
+	}
+}
