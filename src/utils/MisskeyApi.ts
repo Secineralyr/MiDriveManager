@@ -19,7 +19,9 @@ export class MisskeyApi {
 			folderId: id,
 		});
 
-		if (data.length === 0) return result;
+		if (data.length === 0) {
+			return result;
+		}
 		let untilId = data[data.length - 1].id;
 		result.push(...data);
 
@@ -29,7 +31,9 @@ export class MisskeyApi {
 				folderId: id,
 				untilId
 			});
-			if (data.length === 0) return result;
+			if (data.length === 0) {
+				return result;
+			}
 			untilId = data[data.length - 1].id;
 			result.push(...data);
 		}
@@ -42,7 +46,7 @@ export class MisskeyApi {
 		await root.getSubDir();
 
 		for (const f of root.subFolders) {
-			f.
+			f
 		}
 	}
 }

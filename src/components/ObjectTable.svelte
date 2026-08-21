@@ -1,7 +1,11 @@
 <script lang="ts">
 
-	export let folders: unknown[];
-	export let items: unknown[];
+	interface Props {
+		folders: unknown[];
+		items: unknown[];
+	}
+
+	let { folders, items }: Props = $props();
 
 	
 </script>

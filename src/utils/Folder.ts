@@ -16,11 +16,15 @@ export class Folder {
 	}
 
 	public async findFolderById(id: string): Promise<Folder | null> {
-		if (this.id === id) return this;
+		if (this.id === id) {
+			return this;
+		}
 
 		for (const folder of this.subFolders) {
 			const r = await folder.findFolderById(id);
-			if (r !== null) return r;
+			if (r !== null) {
+				return r;
+			}
 		}
 
 		return null;
