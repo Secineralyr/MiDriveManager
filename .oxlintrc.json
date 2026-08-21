@@ -35,7 +35,8 @@
 		"typescript/consistent-return": "off",
 		"unicorn/no-null": "off",
 		"import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
-		"eslint/no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }]
+		"eslint/no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
+		"eslint/one-var": "off"
 	},
 	"overrides": [
 		{
@@ -46,7 +47,9 @@
 				"vitest/prefer-lowercase-title": "off",
 				"vitest/warn-todo": "off",
 				"vitest/prefer-to-be-truthy": "off",
-				"vitest/prefer-to-be-falsy": "off"
+				"vitest/prefer-to-be-falsy": "off",
+				"vitest/no-hooks": "off",
+				"vitest/prefer-expect-assertions": "off"
 			}
 		},
 		{

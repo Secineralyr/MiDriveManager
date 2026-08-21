@@ -5,6 +5,11 @@ import { svelteTesting } from '@testing-library/svelte/vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+	resolve: {
+		alias: {
+			$components: new URL('src/components', import.meta.url).pathname,
+		},
+	},
 	plugins: [
 		svelte(),
 		svelteTesting(),
