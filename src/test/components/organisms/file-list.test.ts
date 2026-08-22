@@ -53,16 +53,28 @@ const makeFile = (id: string, name: string, size: number): FileRecord => ({
 const renderList = (props: Partial<ComponentProps<typeof FileList>> = {}) => {
 	const onsort = vi.fn<(key: 'name' | 'createdAt' | 'size') => void>();
 	const onopenfolder = vi.fn<(folderId: string) => void>();
+	const onselectitem =
+		vi.fn<
+			(
+				kind: 'file' | 'folder',
+				id: string,
+				modifiers: { toggle: boolean; range: boolean },
+			) => void
+		>();
+	const onpreviewfile = vi.fn<(file: FileRecord) => void>();
 	const result = render(FileList, {
 		folders: [makeFolder('d1', 'いろいろふぉるだ')],
 		files: [makeFile('f1', 'がぞー.png', 1536)],
 		sortKey: 'name',
 		sortOrder: 'asc',
+		selectedKeys: [],
 		onsort,
+		onselectitem,
 		onopenfolder,
+		onpreviewfile,
 		...props,
 	});
-	return { ...result, onsort, onopenfolder };
+	return { ...result, onsort, onselectitem, onopenfolder, onpreviewfile };
 };
 
 /**
@@ -98,11 +110,29 @@ describe('ファイル一覧(リスト表示)', () => {
 		expect(onopenfolder).toHaveBeenCalledWith('d1');
 	});
 
-	// プレビュー機能が追加された時にこのアクションが起こるようにする
-	it('ファイル行をダブルクリックしても何も起きない', async () => {
-		const { onopenfolder } = renderList();
+	it('ファイル行をダブルクリックするとonpreviewfileが呼ばれる', async () => {
+		const { onopenfolder, onpreviewfile } = renderList();
 		await fireEvent.dblClick(getRow('がぞー.png'));
 		expect(onopenfolder).not.toHaveBeenCalled();
+		expect(onpreviewfile).toHaveBeenCalledWith(makeFile('f1', 'がぞー.png', 1536));
+	});
+
+	it('行をクリックすると選択として通知される', async () => {
+		const { onselectitem } = renderList();
+		await fireEvent.click(getRow('いろいろふぉるだ'));
+		expect(onselectitem).toHaveBeenCalledWith('folder', 'd1', { toggle: false, range: false });
+	});
+
+	it('Ctrlを押しながらクリックするとトグル選択として通知される', async () => {
+		const { onselectitem } = renderList();
+		await fireEvent.click(getRow('がぞー.png'), { ctrlKey: true });
+		expect(onselectitem).toHaveBeenCalledWith('file', 'f1', { toggle: true, range: false });
+	});
+
+	it('選択中の行には選択状態が付く', () => {
+		renderList({ selectedKeys: ['file:f1'] });
+		expect(getRow('がぞー.png').getAttribute('aria-selected')).toBe('true');
+		expect(getRow('いろいろふぉるだ').getAttribute('aria-selected')).toBe('false');
 	});
 
 	it('空の場合は空表示になる', () => {

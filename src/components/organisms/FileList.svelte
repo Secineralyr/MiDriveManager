@@ -4,6 +4,8 @@
 	import FileListRow from '$components/molecules/FileListRow.svelte';
 	import IconArrowDown from '@tabler/icons-svelte/icons/arrow-down';
 	import IconArrowUp from '@tabler/icons-svelte/icons/arrow-up';
+	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
+	import { makeSelectionKey } from '../../lib/stores/selection.svelte';
 
 	type Props = {
 		/** 表示するフォルダ一覧(並び替え済み) */
@@ -14,13 +16,29 @@
 		sortKey: SortKey;
 		/** 並び替えの方向 */
 		sortOrder: SortOrder;
+		/** 選択中の選択キー一覧 */
+		selectedKeys: string[];
 		/** 並び替え変更時の処理 */
 		onsort: (key: SortKey) => void;
+		/** 項目が選択された時の処理 */
+		onselectitem: (kind: 'file' | 'folder', id: string, modifiers: SelectModifiers) => void;
 		/** フォルダを開く操作 */
 		onopenfolder: (folderId: string) => void;
+		/** ファイルのプレビューを開く操作 */
+		onpreviewfile: (file: FileRecord) => void;
 	};
 
-	let { folders, files, sortKey, sortOrder, onsort, onopenfolder }: Props = $props();
+	let {
+		folders,
+		files,
+		sortKey,
+		sortOrder,
+		selectedKeys,
+		onsort,
+		onselectitem,
+		onopenfolder,
+		onpreviewfile,
+	}: Props = $props();
 
 	const COLUMNS: { key: SortKey; label: string }[] = [
 		{ key: 'name', label: '名前' },
@@ -60,6 +78,10 @@
 				name={folder.name}
 				createdAt={folder.createdAt}
 				size={null}
+				selected={selectedKeys.includes(makeSelectionKey('folder', folder.id))}
+				onselect={(modifiers) => {
+					onselectitem('folder', folder.id, modifiers);
+				}}
 				onopen={() => {
 					onopenfolder(folder.id);
 				}}
@@ -71,6 +93,13 @@
 				createdAt={file.createdAt}
 				size={file.size}
 				mimeType={file.type}
+				selected={selectedKeys.includes(makeSelectionKey('file', file.id))}
+				onselect={(modifiers) => {
+					onselectitem('file', file.id, modifiers);
+				}}
+				onopen={() => {
+					onpreviewfile(file);
+				}}
 			/>
 		{/each}
 		{#if folders.length === 0 && files.length === 0}

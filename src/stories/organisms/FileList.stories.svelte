@@ -72,8 +72,26 @@
 		files,
 		sortKey: 'name',
 		sortOrder: 'asc',
+		selectedKeys: [],
 		onsort: () => {},
+		onselectitem: () => {},
 		onopenfolder: () => {},
+		onpreviewfile: () => {},
+	}}
+/>
+
+<Story
+	name="選択あり"
+	args={{
+		folders,
+		files,
+		sortKey: 'name',
+		sortOrder: 'asc',
+		selectedKeys: ['folder:d1', 'file:f1'],
+		onsort: () => {},
+		onselectitem: () => {},
+		onopenfolder: () => {},
+		onpreviewfile: () => {},
 	}}
 />
 
@@ -84,7 +102,10 @@
 		files: [],
 		sortKey: 'name',
 		sortOrder: 'asc',
+		selectedKeys: [],
 		onsort: () => {},
+		onselectitem: () => {},
 		onopenfolder: () => {},
+		onpreviewfile: () => {},
 	}}
 />

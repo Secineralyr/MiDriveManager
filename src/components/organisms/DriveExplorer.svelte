@@ -1,13 +1,14 @@
 <script lang="ts">
 	import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 	import type { SortKey, SortOrder } from '../../lib/utils/drive-sort';
-	import Breadcrumbs from '$components/molecules/Breadcrumbs.svelte';
+	import type { DetailTarget } from '$components/organisms/DetailsPanel.svelte';
+	import DetailsPanel from '$components/organisms/DetailsPanel.svelte';
+	import DriveToolbar from '$components/organisms/DriveToolbar.svelte';
 	import FileGrid from '$components/organisms/FileGrid.svelte';
 	import FileList from '$components/organisms/FileList.svelte';
 	import FolderTree from '$components/organisms/FolderTree.svelte';
-	import IconButton from '$components/atoms/IconButton.svelte';
-	import IconLayoutGrid from '@tabler/icons-svelte/icons/layout-grid';
-	import IconList from '@tabler/icons-svelte/icons/list';
+	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
+	import SelectionBar from '$components/molecules/SelectionBar.svelte';
 	import type { ViewMode } from '../../lib/db/settings';
 
 	type Props = {
@@ -29,12 +30,28 @@
 		sortOrder: SortOrder;
 		/** エラーメッセージ(正常時はnull) */
 		error: string | null;
+		/** 選択中の選択キー一覧 */
+		selectedKeys: string[];
+		/** 詳細パネルの表示対象 */
+		detailTarget: DetailTarget | null;
+		/** 詳細パネルを表示するかどうか */
+		detailsOpen: boolean;
+		/** 選択中ファイルの合計サイズ */
+		selectionSize: number;
 		/** フォルダ移動時の処理 */
 		onnavigate: (folderId: string | null) => void;
 		/** 並び替え変更時の処理 */
 		onsort: (key: SortKey) => void;
 		/** 表示モード変更時の処理 */
 		onviewmode: (mode: ViewMode) => void;
+		/** 項目が選択された時の処理 */
+		onselectitem: (kind: 'file' | 'folder', id: string, modifiers: SelectModifiers) => void;
+		/** 選択解除時の処理 */
+		onclearselection: () => void;
+		/** 詳細パネルを閉じる操作 */
+		onclosedetails: () => void;
+		/** ファイルのプレビューを開く操作 */
+		onpreviewfile: (file: FileRecord) => void;
 	};
 
 	let {
@@ -47,15 +64,18 @@
 		sortKey,
 		sortOrder,
 		error,
+		selectedKeys,
+		detailTarget,
+		detailsOpen,
+		selectionSize,
 		onnavigate,
 		onsort,
 		onviewmode,
+		onselectitem,
+		onclearselection,
+		onclosedetails,
+		onpreviewfile,
 	}: Props = $props();
-
-	const breadcrumbItems = $derived([
-		{ id: null, name: 'ルート' },
-		...breadcrumb.map((folder) => ({ id: folder.id, name: folder.name })),
-	]);
 
 	/**
 	 * 一覧内のフォルダを開く
@@ -71,38 +91,45 @@
 		<FolderTree {childrenMap} {currentFolderId} {onnavigate} />
 	</aside>
 	<main>
-		<div>
-			<Breadcrumbs items={breadcrumbItems} {onnavigate} />
-			<div>
-				<IconButton
-					label="リスト表示"
-					active={viewMode === 'list'}
-					onclick={() => {
-						onviewmode('list');
-					}}
-				>
-					<IconList size={18} />
-				</IconButton>
-				<IconButton
-					label="グリッド表示"
-					active={viewMode === 'grid'}
-					onclick={() => {
-						onviewmode('grid');
-					}}
-				>
-					<IconLayoutGrid size={18} />
-				</IconButton>
-			</div>
-		</div>
+		<DriveToolbar {breadcrumb} {viewMode} {onnavigate} {onviewmode} />
+		{#if selectedKeys.length > 0}
+			<SelectionBar count={selectedKeys.length} onclear={onclearselection} />
+		{/if}
 		{#if error !== null}
 			<p role="alert">{error}</p>
 		{/if}
 		{#if viewMode === 'list'}
-			<FileList {folders} {files} {sortKey} {sortOrder} {onsort} onopenfolder={handleOpenFolder} />
+			<FileList
+				{folders}
+				{files}
+				{sortKey}
+				{sortOrder}
+				{selectedKeys}
+				{onsort}
+				{onselectitem}
+				onopenfolder={handleOpenFolder}
+				{onpreviewfile}
+			/>
 		{:else}
-			<FileGrid {folders} {files} onopenfolder={handleOpenFolder} />
+			<FileGrid
+				{folders}
+				{files}
+				{selectedKeys}
+				{onselectitem}
+				onopenfolder={handleOpenFolder}
+				{onpreviewfile}
+			/>
 		{/if}
 	</main>
+	{#if detailsOpen}
+		<DetailsPanel
+			target={detailTarget}
+			selectionCount={selectedKeys.length}
+			{selectionSize}
+			onclose={onclosedetails}
+			onpreview={onpreviewfile}
+		/>
+	{/if}
 </div>
 
 <style>
@@ -129,18 +156,6 @@
 		padding: 20px;
 		gap: 15px;
 		min-width: 0;
-	}
-
-	main > div:first-of-type {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
-	}
-
-	main > div:first-of-type > div {
-		display: flex;
-		gap: 5px;
 	}
 
 	p[role='alert'] {

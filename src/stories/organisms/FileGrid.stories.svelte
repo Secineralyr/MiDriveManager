@@ -61,6 +61,38 @@
 	});
 </script>
 
-<Story name="一覧" args={{ folders, files, onopenfolder: () => {} }} />
+<Story
+	name="一覧"
+	args={{
+		folders,
+		files,
+		selectedKeys: [],
+		onselectitem: () => {},
+		onopenfolder: () => {},
+		onpreviewfile: () => {},
+	}}
+/>
 
-<Story name="空のフォルダ" args={{ folders: [], files: [], onopenfolder: () => {} }} />
+<Story
+	name="選択あり"
+	args={{
+		folders,
+		files,
+		selectedKeys: ['folder:d1', 'file:f1'],
+		onselectitem: () => {},
+		onopenfolder: () => {},
+		onpreviewfile: () => {},
+	}}
+/>
+
+<Story
+	name="空のフォルダ"
+	args={{
+		folders: [],
+		files: [],
+		selectedKeys: [],
+		onselectitem: () => {},
+		onopenfolder: () => {},
+		onpreviewfile: () => {},
+	}}
+/>

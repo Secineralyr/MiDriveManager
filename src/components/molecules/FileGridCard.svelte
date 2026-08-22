@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
+	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
 
 	type Props = {
 		/** フォルダカードかどうか */
@@ -10,11 +11,32 @@
 		mimeType?: string | null;
 		/** サムネイル画像URL(ないものはアイコン表示) */
 		thumbnailUrl?: string | null;
+		/** 選択中かどうか */
+		selected?: boolean;
+		/** クリックで選択された時の処理 */
+		onselect?: (modifiers: SelectModifiers) => void;
 		/** ダブルクリックで開く操作 */
 		onopen?: () => void;
 	};
 
-	let { folder = false, name, mimeType = null, thumbnailUrl = null, onopen }: Props = $props();
+	let {
+		folder = false,
+		name,
+		mimeType = null,
+		thumbnailUrl = null,
+		selected = false,
+		onselect,
+		onopen,
+	}: Props = $props();
+
+	/**
+	 * クリックを選択操作として通知する
+	 * @param event - マウスイベント
+	 */
+	const handleClick = (event: MouseEvent) => {
+		event.stopPropagation();
+		onselect?.({ toggle: event.ctrlKey || event.metaKey, range: event.shiftKey });
+	};
 
 	/** ダブルクリックを外部ハンドラへ伝える */
 	const handleDblClick = () => {
@@ -22,7 +44,14 @@
 	};
 </script>
 
-<button type="button" ondblclick={handleDblClick} title={name}>
+<button
+	type="button"
+	onclick={handleClick}
+	ondblclick={handleDblClick}
+	title={name}
+	data-selected={selected}
+	aria-pressed={selected}
+>
 	<span>
 		{#if thumbnailUrl !== null}
 			<img src={thumbnailUrl} alt="" loading="lazy" />
@@ -44,6 +73,7 @@
 		font-family: inherit;
 		cursor: pointer;
 		inline-size: 100%;
+		user-select: none;
 		transition:
 			background-color 250ms ease,
 			border-color 250ms ease;
@@ -57,6 +87,11 @@
 	button:focus-visible {
 		outline: 2px solid var(--color-focus);
 		outline-offset: 2px;
+	}
+
+	button[data-selected='true'] {
+		border-color: var(--color-accent);
+		background-color: var(--color-surface-active);
 	}
 
 	span:first-child {

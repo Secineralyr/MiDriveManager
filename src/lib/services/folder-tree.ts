@@ -79,6 +79,6 @@ export const folderPath = (folders: FolderRecord[], folderId: string | null) => 
 	while (cursor !== null) {
 		cursor = stepToParent(walk, cursor);
 	}
-	
+
 	return walk.path;
 };

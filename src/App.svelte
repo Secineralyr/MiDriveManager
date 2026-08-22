@@ -2,10 +2,9 @@
 	import { completeMiauth, startMiauthSession, takePendingMiauth } from './lib/auth/miauth';
 	import AccountWizard from '$components/organisms/AccountWizard.svelte';
 	import AppHeader from '$components/organisms/AppHeader.svelte';
-	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
+	import DrivePage from '$components/pages/DrivePage.svelte';
 	import Spinner from '$components/atoms/Spinner.svelte';
 	import { accountsStore } from './lib/stores/accounts.svelte';
-	import { driveStore } from './lib/stores/drive.svelte';
 	import { onMount } from 'svelte';
 	import { syncStore } from './lib/stores/sync.svelte';
 
@@ -135,35 +134,11 @@
 		}
 	};
 
-	/**
-	 * フォルダへ移動する
-	 * @param folderId - 移動先のフォルダID(ルートはnull)
-	 */
-	const handleNavigate = (folderId: string | null) => {
-		driveStore.openFolder(folderId);
-	};
-
 	onMount(initialize);
 
 	$effect(() => {
 		if (screen === 'main' && activeAccount !== null) {
 			syncStore.run(activeAccount);
-		}
-	});
-
-	$effect(() => {
-		if (screen === 'main' && activeAccount !== null && driveStore.accountId !== activeAccount.id) {
-			driveStore.openAccount(activeAccount.id);
-		}
-	});
-
-	$effect(() => {
-		if (
-			syncStore.status === 'idle' &&
-			syncStore.accountId !== null &&
-			syncStore.accountId === driveStore.accountId
-		) {
-			driveStore.refresh();
 		}
 	});
 </script>
@@ -191,24 +166,7 @@
 		onremove={handleRemove}
 		onresync={handleResync}
 	/>
-	<DriveExplorer
-		childrenMap={driveStore.childrenMap}
-		currentFolderId={driveStore.currentFolderId}
-		breadcrumb={driveStore.breadcrumb}
-		folders={driveStore.childFolders}
-		files={driveStore.files}
-		viewMode={driveStore.viewMode}
-		sortKey={driveStore.sortKey}
-		sortOrder={driveStore.sortOrder}
-		error={driveStore.error}
-		onnavigate={handleNavigate}
-		onsort={(key) => {
-			driveStore.toggleSort(key);
-		}}
-		onviewmode={(mode) => {
-			driveStore.changeViewMode(mode);
-		}}
-	/>
+	<DrivePage account={activeAccount} />
 {/if}
 
 <style>
