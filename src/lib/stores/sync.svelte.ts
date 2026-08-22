@@ -121,7 +121,7 @@ export const syncStore = {
 		state.folderCount = 0;
 		state.fileCount = 0;
 		state.error = null;
-		
+
 		const _ = syncInBackground(account, clientFactory, runToken);
 	},
 };

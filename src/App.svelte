@@ -2,8 +2,10 @@
 	import { completeMiauth, startMiauthSession, takePendingMiauth } from './lib/auth/miauth';
 	import AccountWizard from '$components/organisms/AccountWizard.svelte';
 	import AppHeader from '$components/organisms/AppHeader.svelte';
+	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
 	import Spinner from '$components/atoms/Spinner.svelte';
 	import { accountsStore } from './lib/stores/accounts.svelte';
+	import { driveStore } from './lib/stores/drive.svelte';
 	import { onMount } from 'svelte';
 	import { syncStore } from './lib/stores/sync.svelte';
 
@@ -133,11 +135,35 @@
 		}
 	};
 
+	/**
+	 * フォルダへ移動する
+	 * @param folderId - 移動先のフォルダID(ルートはnull)
+	 */
+	const handleNavigate = (folderId: string | null) => {
+		driveStore.openFolder(folderId);
+	};
+
 	onMount(initialize);
 
 	$effect(() => {
 		if (screen === 'main' && activeAccount !== null) {
 			syncStore.run(activeAccount);
+		}
+	});
+
+	$effect(() => {
+		if (screen === 'main' && activeAccount !== null && driveStore.accountId !== activeAccount.id) {
+			driveStore.openAccount(activeAccount.id);
+		}
+	});
+
+	$effect(() => {
+		if (
+			syncStore.status === 'idle' &&
+			syncStore.accountId !== null &&
+			syncStore.accountId === driveStore.accountId
+		) {
+			driveStore.refresh();
 		}
 	});
 </script>
@@ -165,16 +191,24 @@
 		onremove={handleRemove}
 		onresync={handleResync}
 	/>
-	<main>
-		{#if syncStore.status === 'idle' && syncStore.accountId === activeAccount.id}
-			<p>
-				フォルダ{syncStore.folderCount}件・ファイル{syncStore.fileCount}件を同期しました。
-				閲覧機能は次のフェーズで実装します。
-			</p>
-		{:else}
-			<p>ドライブの閲覧機能は次のフェーズで実装します。</p>
-		{/if}
-	</main>
+	<DriveExplorer
+		childrenMap={driveStore.childrenMap}
+		currentFolderId={driveStore.currentFolderId}
+		breadcrumb={driveStore.breadcrumb}
+		folders={driveStore.childFolders}
+		files={driveStore.files}
+		viewMode={driveStore.viewMode}
+		sortKey={driveStore.sortKey}
+		sortOrder={driveStore.sortOrder}
+		error={driveStore.error}
+		onnavigate={handleNavigate}
+		onsort={(key) => {
+			driveStore.toggleSort(key);
+		}}
+		onviewmode={(mode) => {
+			driveStore.changeViewMode(mode);
+		}}
+	/>
 {/if}
 
 <style>
@@ -183,16 +217,5 @@
 		align-items: center;
 		justify-content: center;
 		flex: 1;
-	}
-
-	main {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex: 1;
-	}
-
-	p {
-		color: var(--color-text-muted);
 	}
 </style>
