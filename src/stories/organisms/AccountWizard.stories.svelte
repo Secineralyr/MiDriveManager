@@ -6,6 +6,8 @@
 		title: 'organisms/AccountWizard',
 		component: AccountWizard,
 		args: {
+			noticeAccepted: true,
+			onacceptnotice: () => {},
 			cancellable: false,
 			busy: false,
 			error: null,
@@ -15,7 +17,9 @@
 	});
 </script>
 
-<Story name="初回起動" />
+<Story name="諸注意(初回利用)" args={{ noticeAccepted: false }} />
+
+<Story name="ホスト名入力" />
 
 <Story name="キャンセル可能" args={{ cancellable: true }} />
 

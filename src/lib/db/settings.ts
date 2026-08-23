@@ -40,3 +40,19 @@ export const setViewMode = async (mode: ViewMode) => {
 	const db = await openDatabase();
 	await db.put('settings', mode, 'viewMode');
 };
+
+/**
+ * 初回利用時の諸注意に同意済みかどうかを取得する
+ * @returns 同意済みならtrue。未設定ならfalse
+ */
+export const getNoticeAccepted = async () => {
+	const db = await openDatabase();
+	const value = await db.get('settings', 'noticeAccepted');
+	return value === true;
+};
+
+/** 初回利用時の諸注意に同意したことを保存する */
+export const setNoticeAccepted = async () => {
+	const db = await openDatabase();
+	await db.put('settings', true, 'noticeAccepted');
+};

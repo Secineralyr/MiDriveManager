@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { completeMiauth, startMiauthSession, takePendingMiauth } from './lib/auth/miauth';
+	import { getNoticeAccepted, setNoticeAccepted } from './lib/db/settings';
 	import AccountWizard from '$components/organisms/AccountWizard.svelte';
 	import AppHeader from '$components/organisms/AppHeader.svelte';
 	import AppOverlays from '$components/organisms/AppOverlays.svelte';
@@ -16,6 +17,7 @@
 	let screen = $state<Screen>('loading');
 	let wizardBusy = $state(false);
 	let wizardError = $state<string | null>(null);
+	let noticeAccepted = $state(false);
 
 	const activeAccount = $derived(accountsStore.active);
 
@@ -60,6 +62,7 @@
 	/** アカウント読み込みとMiAuthコールバック処理を行うアプリ初期化 */
 	const initialize = async () => {
 		try {
+			noticeAccepted = await getNoticeAccepted();
 			await accountsStore.load();
 			const session = new URLSearchParams(location.search).get('session');
 			if (session !== null) {
@@ -84,6 +87,19 @@
 			location.assign(url);
 		} catch (error) {
 			wizardError = error instanceof Error ? error.message : '認証を開始できませんでした';
+		}
+	};
+
+	/**
+	 * 諸注意への同意を保存する
+	 * 既にアカウントがある(機能追加前から使っている)場合はscreenがmainのままなので、そのままメイン画面に進む
+	 */
+	const handleAcceptNotice = async () => {
+		noticeAccepted = true;
+		try {
+			await setNoticeAccepted();
+		} catch (error) {
+			reportUnexpectedError(error);
 		}
 	};
 
@@ -153,8 +169,10 @@
 	<section>
 		<Spinner size={30} />
 	</section>
-{:else if screen === 'wizard' || activeAccount === null}
+{:else if screen === 'wizard' || activeAccount === null || !noticeAccepted}
 	<AccountWizard
+		{noticeAccepted}
+		onacceptnotice={handleAcceptNotice}
 		cancellable={activeAccount !== null && !wizardBusy}
 		busy={wizardBusy}
 		error={wizardError}

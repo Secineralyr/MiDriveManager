@@ -11,7 +11,10 @@ import type { ComponentProps } from 'svelte';
 const renderWizard = (props: Partial<ComponentProps<typeof AccountWizard>> = {}) => {
 	const onstart = vi.fn<(host: string) => void>();
 	const oncancel = vi.fn<() => void>();
+	const onacceptnotice = vi.fn<() => void>();
 	const result = render(AccountWizard, {
+		noticeAccepted: true,
+		onacceptnotice,
 		cancellable: false,
 		busy: false,
 		error: null,
@@ -19,7 +22,7 @@ const renderWizard = (props: Partial<ComponentProps<typeof AccountWizard>> = {})
 		oncancel,
 		...props,
 	});
-	return { ...result, onstart, oncancel };
+	return { ...result, onstart, oncancel, onacceptnotice };
 };
 
 /**
@@ -81,5 +84,21 @@ describe('アカウント追加ウィザードの操作', () => {
 		const { oncancel } = renderWizard({ cancellable: true });
 		await fireEvent.click(screen.getByText('キャンセル'));
 		expect(oncancel).toHaveBeenCalledWith();
+	});
+});
+
+describe('初回利用時の諸注意', () => {
+	it('未同意なら諸注意と「わかった」ボタンだけを表示し、ホスト名の入力は出さない', () => {
+		const { container } = renderWizard({ noticeAccepted: false });
+		expect(screen.getByRole('heading', { name: 'ご利用にあたっての注意' })).toBeDefined();
+		expect(screen.getByText(/このツールは、Misskeyサーバー上のドライブ上/u)).toBeDefined();
+		expect(screen.getByRole('button', { name: 'わかった' })).toBeDefined();
+		expect(container.querySelector('form')).toBeNull();
+	});
+
+	it('「わかった」を押すとonacceptnoticeが呼ばれる', async () => {
+		const { onacceptnotice } = renderWizard({ noticeAccepted: false });
+		await fireEvent.click(screen.getByRole('button', { name: 'わかった' }));
+		expect(onacceptnotice).toHaveBeenCalledWith();
 	});
 });

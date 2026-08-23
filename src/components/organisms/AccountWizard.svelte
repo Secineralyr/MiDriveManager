@@ -3,7 +3,18 @@
 	import Spinner from '$components/atoms/Spinner.svelte';
 	import TextField from '$components/atoms/TextField.svelte';
 
+	/** 初回利用時に同意を求める諸注意(段落ごと) */
+	const NOTICE_PARAGRAPHS = [
+		'このツールは、Misskeyサーバー上のドライブ上にアップロードされている画像等のアイテムを整理しやすくするために作成されたツールです。',
+		'そのため、一般的なドライブツールのUIと操作を提供するためにアップロード等が行えるようになっていますが、このツールはドライブ機能を一般的なクラウド目的で使用するためではないことをご理解のうえ、ご利用ください。',
+		'また、アップロードされたファイルは各ご利用のMisskeyサーバー上のルールに従うものとし、このツールを使用したことで予期しない事態や損害が発生した場合、その一切の責任を負いかねますので、ご了承ください。',
+	];
+
 	type Props = {
+		/** 諸注意に同意済みかどうか(未同意ならホスト名入力の前に諸注意を表示する) */
+		noticeAccepted: boolean;
+		/** 諸注意に同意した時の処理 */
+		onacceptnotice: () => void;
 		/** キャンセルできるかどうか(既存アカウントがある場合のみ) */
 		cancellable: boolean;
 		/** 認証結果の確認中かどうか */
@@ -16,7 +27,8 @@
 		oncancel: () => void;
 	};
 
-	let { cancellable, busy, error, onstart, oncancel }: Props = $props();
+	let { noticeAccepted, onacceptnotice, cancellable, busy, error, onstart, oncancel }: Props =
+		$props();
 
 	let host = $state('misskey.io');
 	let inputError = $state<string | null>(null);
@@ -40,11 +52,20 @@
 <section>
 	<div>
 		<h1>misskeyDriveManager</h1>
-		<p>
-			Misskeyのドライブを整理整頓するためのツールです。
-			利用するサーバーのホスト名を入力して、アカウントを認証してください。
-		</p>
-		<form onsubmit={handleSubmit}>
+		{#if !noticeAccepted}
+			<h2>ご利用にあたっての注意</h2>
+			{#each NOTICE_PARAGRAPHS as paragraph, index (index)}
+				<p>{paragraph}</p>
+			{/each}
+			<div>
+				<Button onclick={onacceptnotice}>わかった</Button>
+			</div>
+		{:else}
+			<p>
+				Misskeyのドライブを整理整頓するためのツールです。
+				利用するサーバーのホスト名を入力して、アカウントを認証してください。
+			</p>
+			<form onsubmit={handleSubmit}>
 			<TextField
 				label="サーバーのホスト名"
 				bind:value={host}
@@ -66,6 +87,7 @@
 				{/if}
 			</div>
 		</form>
+		{/if}
 	</div>
 </section>
 
@@ -92,10 +114,30 @@
 		font-size: 1.5rem;
 	}
 
+	h2 {
+		margin: 20px 0;
+		margin-bottom: 10px;
+		font-size: 1rem;
+	}
+
 	section > div > p {
 		margin: 15px 0;
 		margin-bottom: 25px;
 		color: var(--color-text-muted);
+	}
+
+	section > div > h2 ~ p {
+		margin: 0;
+		margin-bottom: 15px;
+		font-size: 0.95rem;
+		line-height: 1.7;
+		color: var(--color-text);
+	}
+
+	section > div > div {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 25px;
 	}
 
 	form {
