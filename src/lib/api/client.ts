@@ -90,6 +90,13 @@ const buildFileMethods = (context: ClientContext) => ({
 	driveStream: (params: entities.DriveStreamRequest) =>
 		context.limiter.schedule(() => context.client.request('drive/stream', params)),
 	/**
+	 * ファイルをアップロードする(multipart/form-data。fileにはFileまたはBlobを渡す)
+	 * @param params - リクエストパラメータ
+	 * @returns 作成されたファイル(同じ内容のファイルが既にある場合は既存のファイル)
+	 */
+	driveFilesCreate: (params: entities.DriveFilesCreateRequest) =>
+		context.limiter.schedule(() => context.client.request('drive/files/create', params)),
+	/**
 	 * ファイルの名前やメタデータを更新する
 	 * @param params - リクエストパラメータ
 	 * @returns 更新後のファイル

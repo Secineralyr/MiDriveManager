@@ -68,6 +68,49 @@ describe('APIクライアント', () => {
 	});
 });
 
+/**
+ * multipartのボディを記録するfetchモックを作る
+ * @returns fetchモックと記録されたボディ
+ */
+const makeMultipartFetch = () => {
+	const bodies: FormData[] = [];
+	const fetchMock = vi
+		.fn<(input: string, init?: { body?: FormData }) => Promise<FetchResponseMock>>()
+		.mockImplementation((_input, init) => {
+			if (init?.body !== undefined) {
+				bodies.push(init.body);
+			}
+			return Promise.resolve({
+				status: 200,
+				headers: new Headers(),
+				json: () => Promise.resolve({ id: 'f1' }),
+			});
+		});
+	return { fetchMock, bodies };
+};
+
+describe('ファイルのアップロード', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('multipart/form-dataでファイルとパラメータを送る', async () => {
+		const { fetchMock, bodies } = makeMultipartFetch();
+		vi.stubGlobal('fetch', fetchMock);
+		const client = createDriveClient('misskey.example', 'token-1', { minIntervalMs: 0 });
+		const file = new File(['data'], 'a.png', { type: 'image/png' });
+
+		await expect(
+			client.driveFilesCreate({ file, folderId: 'd1', name: 'a.png' }),
+		).resolves.toMatchObject({ id: 'f1' });
+
+		const [body] = bodies;
+		expect(body?.get('i')).toBe('token-1');
+		expect(body?.get('folderId')).toBe('d1');
+		expect(body?.get('file')).toBeInstanceOf(File);
+	});
+});
+
 describe('429応答の再試行', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();

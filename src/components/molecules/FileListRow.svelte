@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
 	import { formatDateTime, formatFileSize } from '../../lib/utils/format';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
@@ -26,6 +27,8 @@
 		ondragenditem?: () => void;
 		/** この行(フォルダ)への項目ドロップ時の処理 */
 		ondropitems?: () => void;
+		/** この行(フォルダ)へのOSファイルドロップ時の処理 */
+		ondropfiles?: (transfer: DataTransfer) => void;
 	};
 
 	let {
@@ -40,6 +43,7 @@
 		ondragstartitem,
 		ondragenditem,
 		ondropitems,
+		ondropfiles,
 	}: Props = $props();
 
 	let dropover = $state(false);
@@ -76,20 +80,14 @@
 	};
 
 	/**
-	 * ドロップの受け入れを表明して強調する
+	 * 受け入れられる種類のドロップなら受け入れを表明して強調する
 	 * @param event - ドラッグイベント
 	 */
 	const handleDragOver = (event: DragEvent) => {
-		if (ondropitems === undefined) {
-			return;
-		}
-		event.preventDefault();
-
-		if (event.dataTransfer !== null) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-
-		dropover = true;
+		dropover = acceptDragOver(event, {
+			items: ondropitems !== undefined,
+			files: ondropfiles !== undefined,
+		});
 	};
 
 	/** ドロップ対象の強調を解除する */
@@ -98,13 +96,12 @@
 	};
 
 	/**
-	 * ドロップされた項目を受け取る
+	 * ドロップされた項目またはOSファイルを受け取る
 	 * @param event - ドラッグイベント
 	 */
 	const handleDrop = (event: DragEvent) => {
-		event.preventDefault();
 		dropover = false;
-		ondropitems?.();
+		dispatchDrop(event, { onitems: ondropitems, onfiles: ondropfiles });
 	};
 </script>
 

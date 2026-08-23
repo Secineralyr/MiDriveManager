@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
 	import type { FolderRecord } from '../../lib/db/schema';
 	import FolderTreeItem from '$components/molecules/FolderTreeItem.svelte';
 	import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
@@ -12,28 +13,24 @@
 		onnavigate: (folderId: string | null) => void;
 		/** フォルダへの項目ドロップ時の処理 */
 		ondropitems?: (folderId: string | null) => void;
+		/** フォルダへのOSファイルドロップ時の処理 */
+		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
 	};
 
-	let { childrenMap, currentFolderId, onnavigate, ondropitems }: Props = $props();
+	let { childrenMap, currentFolderId, onnavigate, ondropitems, ondropfiles }: Props = $props();
 
 	let expanded = $state<Record<string, boolean>>({});
 	let rootDropover = $state(false);
 
 	/**
-	 * ルートへのドロップ受け入れを表明して強調する
+	 * 受け入れられる種類ならルートへのドロップ受け入れを表明して強調する
 	 * @param event - ドラッグイベント
 	 */
 	const handleRootDragOver = (event: DragEvent) => {
-		if (ondropitems === undefined) {
-			return;
-		}
-		event.preventDefault();
-
-		if (event.dataTransfer !== null) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-		
-		rootDropover = true;
+		rootDropover = acceptDragOver(event, {
+			items: ondropitems !== undefined,
+			files: ondropfiles !== undefined,
+		});
 	};
 
 	/** ルートのドロップ強調を解除する */
@@ -42,13 +39,15 @@
 	};
 
 	/**
-	 * ルートへドロップされた項目を受け取る
+	 * ルートへドロップされた項目またはOSファイルを受け取る
 	 * @param event - ドラッグイベント
 	 */
 	const handleRootDrop = (event: DragEvent) => {
-		event.preventDefault();
 		rootDropover = false;
-		ondropitems?.(null);
+		dispatchDrop(event, {
+			onitems: ondropitems === undefined ? undefined : () => ondropitems(null),
+			onfiles: ondropfiles === undefined ? undefined : (transfer) => ondropfiles(null, transfer),
+		});
 	};
 
 	const rootChildren = $derived(childrenMap[''] ?? []);
@@ -97,6 +96,7 @@
 							ontoggle={handleToggle}
 							onselect={onnavigate}
 							{ondropitems}
+							{ondropfiles}
 						/>
 					{/each}
 				</ul>

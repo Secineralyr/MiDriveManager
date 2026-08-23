@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 	import type { SortKey, SortOrder } from '../../lib/utils/drive-sort';
+	import { acceptDragOver, dispatchDrop, dropKindOf } from '../../lib/utils/drop-target';
 	import type { DetailTarget } from '$components/organisms/DetailsPanel.svelte';
 	import DetailsPanel from '$components/organisms/DetailsPanel.svelte';
 	import DriveToolbar from '$components/organisms/DriveToolbar.svelte';
@@ -71,6 +72,10 @@
 		ondragenditem: () => void;
 		/** フォルダへの項目ドロップ時の処理 */
 		ondropitems: (folderId: string | null) => void;
+		/** フォルダへのOSファイルドロップ時の処理(一覧の余白へのドロップは表示中フォルダ宛て) */
+		ondropfiles: (folderId: string | null, transfer: DataTransfer) => void;
+		/** ツールバーのアップロードボタンでファイルが選ばれた時の処理 */
+		onuploadfiles: (files: File[]) => void;
 	};
 
 	let {
@@ -101,7 +106,12 @@
 		ondragstartitem,
 		ondragenditem,
 		ondropitems,
+		ondropfiles,
+		onuploadfiles,
 	}: Props = $props();
+
+	/** 一覧領域内でOSファイルをドラッグしている深さ(子要素の出入りで増減するため数で持つ) */
+	let fileDragDepth = $state(0);
 
 	/**
 	 * 一覧内のフォルダへのドロップを全体のドロップ処理へ渡す
@@ -112,20 +122,88 @@
 	};
 
 	/**
+	 * 一覧内のフォルダへのOSファイルドロップを全体のドロップ処理へ渡す
+	 * @param folderId - 対象のフォルダID
+	 * @param transfer - ドロップされたデータ
+	 */
+	const handleDropFilesInFolder = (folderId: string, transfer: DataTransfer) => {
+		ondropfiles(folderId, transfer);
+	};
+
+	/**
 	 * 一覧内のフォルダを開く
 	 * @param folderId - 開くフォルダID
 	 */
 	const handleOpenFolder = (folderId: string) => {
 		onnavigate(folderId);
 	};
+
+	/**
+	 * OSファイルが一覧領域へ入った時に深さを増やす
+	 * @param event - ドラッグイベント
+	 */
+	const handleAreaDragEnter = (event: DragEvent) => {
+		if (dropKindOf(event.dataTransfer) === 'files') {
+			fileDragDepth += 1;
+		}
+	};
+
+	/**
+	 * OSファイルが一覧領域(または子要素)から出た時に深さを減らす
+	 * @param event - ドラッグイベント
+	 */
+	const handleAreaDragLeave = (event: DragEvent) => {
+		if (dropKindOf(event.dataTransfer) === 'files') {
+			fileDragDepth = Math.max(0, fileDragDepth - 1);
+		}
+	};
+
+	/**
+	 * 一覧領域はOSファイルのドロップだけを受け入れる(フォルダ行などが先に受け取った場合はここへ来ない)
+	 * @param event - ドラッグイベント
+	 */
+	const handleAreaDragOver = (event: DragEvent) => {
+		acceptDragOver(event, { items: false, files: true });
+	};
+
+	/**
+	 * 一覧領域へドロップされたOSファイルを表示中フォルダ宛てとして受け取る
+	 * @param event - ドラッグイベント
+	 */
+	const handleAreaDrop = (event: DragEvent) => {
+		dispatchDrop(event, {
+			onfiles: (transfer) => {
+				ondropfiles(currentFolderId, transfer);
+			},
+		});
+	};
+
+	/** ドロップがどこで処理されても領域の強調を解除する(捕捉段階で呼ぶ) */
+	const resetAreaDrag = () => {
+		fileDragDepth = 0;
+	};
 </script>
 
 <div class="workspace">
 	<aside>
-		<FolderTree {childrenMap} {currentFolderId} {onnavigate} {ondropitems} />
+		<FolderTree {childrenMap} {currentFolderId} {onnavigate} {ondropitems} {ondropfiles} />
 	</aside>
-	<main>
-		<DriveToolbar {breadcrumb} {viewMode} {onnavigate} {onviewmode} {oncreatefolder} />
+	<main
+		data-dropover={fileDragDepth > 0}
+		ondragenter={handleAreaDragEnter}
+		ondragleave={handleAreaDragLeave}
+		ondragover={handleAreaDragOver}
+		ondrop={handleAreaDrop}
+		ondropcapture={resetAreaDrag}
+	>
+		<DriveToolbar
+			{breadcrumb}
+			{viewMode}
+			{onnavigate}
+			{onviewmode}
+			{oncreatefolder}
+			{onuploadfiles}
+		/>
 		{#if selectedKeys.length > 0}
 			<SelectionBar
 				count={selectedKeys.length}
@@ -147,6 +225,7 @@
 				{ondragstartitem}
 				{ondragenditem}
 				ondropinfolder={handleDropInFolder}
+				ondropfilesinfolder={handleDropFilesInFolder}
 			/>
 		{:else}
 			<FileGrid
@@ -159,6 +238,7 @@
 				{ondragstartitem}
 				{ondragenditem}
 				ondropinfolder={handleDropInFolder}
+				ondropfilesinfolder={handleDropFilesInFolder}
 			/>
 		{/if}
 	</main>
@@ -200,5 +280,10 @@
 		padding: 20px;
 		gap: 15px;
 		min-width: 0;
+	}
+
+	main[data-dropover='true'] {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
 	}
 </style>

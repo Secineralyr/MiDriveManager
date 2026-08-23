@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
 	import type { FolderRecord } from '../../lib/db/schema';
 	// oxlint-disable-next-line import/no-self-import -- 再帰コンポーネントの表現には自己importが必要(svelte:selfは非推奨)
 	import FolderTreeItem from '$components/molecules/FolderTreeItem.svelte';
@@ -20,28 +21,32 @@
 		onselect: (folderId: string) => void;
 		/** このフォルダへの項目ドロップ時の処理 */
 		ondropitems?: (folderId: string) => void;
+		/** このフォルダへのOSファイルドロップ時の処理 */
+		ondropfiles?: (folderId: string, transfer: DataTransfer) => void;
 	};
 
-	let { folder, childrenMap, expanded, currentFolderId, ontoggle, onselect, ondropitems }: Props =
-		$props();
+	let {
+		folder,
+		childrenMap,
+		expanded,
+		currentFolderId,
+		ontoggle,
+		onselect,
+		ondropitems,
+		ondropfiles,
+	}: Props = $props();
 
 	let dropover = $state(false);
 
 	/**
-	 * ドロップの受け入れを表明して強調する
+	 * 受け入れられる種類のドロップなら受け入れを表明して強調する
 	 * @param event - ドラッグイベント
 	 */
 	const handleDragOver = (event: DragEvent) => {
-		if (ondropitems === undefined) {
-			return;
-		}
-		event.preventDefault();
-
-		if (event.dataTransfer !== null) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-
-		dropover = true;
+		dropover = acceptDragOver(event, {
+			items: ondropitems !== undefined,
+			files: ondropfiles !== undefined,
+		});
 	};
 
 	/** ドロップ対象の強調を解除する */
@@ -50,13 +55,16 @@
 	};
 
 	/**
-	 * ドロップされた項目を受け取る
+	 * ドロップされた項目またはOSファイルをこのフォルダ宛てとして受け取る
 	 * @param event - ドラッグイベント
 	 */
 	const handleDrop = (event: DragEvent) => {
-		event.preventDefault();
 		dropover = false;
-		ondropitems?.(folder.id);
+		dispatchDrop(event, {
+			onitems: ondropitems === undefined ? undefined : () => ondropitems(folder.id),
+			onfiles:
+				ondropfiles === undefined ? undefined : (transfer) => ondropfiles(folder.id, transfer),
+		});
 	};
 
 	const children = $derived(childrenMap[folder.id] ?? []);
@@ -107,6 +115,7 @@
 					{ontoggle}
 					{onselect}
 					{ondropitems}
+					{ondropfiles}
 				/>
 			{/each}
 		</ul>

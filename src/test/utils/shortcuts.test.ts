@@ -6,7 +6,10 @@ describe('ショートカットの解決', () => {
 		expect(resolveShortcut({ key: 'a', ctrl: true })).toBe('selectAll');
 		expect(resolveShortcut({ key: 'c', ctrl: true })).toBe('copy');
 		expect(resolveShortcut({ key: 'x', ctrl: true })).toBe('cut');
-		expect(resolveShortcut({ key: 'v', ctrl: true })).toBe('paste');
+	});
+
+	it('Ctrl+Vはpasteイベントに委ねるため操作にならない', () => {
+		expect(resolveShortcut({ key: 'v', ctrl: true })).toBeNull();
 	});
 
 	it('大文字のキーでも同じ操作になる', () => {

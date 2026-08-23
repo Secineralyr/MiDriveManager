@@ -102,6 +102,8 @@
 		ondragstartitem: () => {},
 		ondragenditem: () => {},
 		ondropitems: () => {},
+		ondropfiles: () => {},
+		onuploadfiles: () => {},
 	};
 
 	const { Story } = defineMeta({

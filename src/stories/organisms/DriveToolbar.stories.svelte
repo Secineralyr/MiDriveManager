@@ -34,6 +34,7 @@
 		onnavigate: () => {},
 		onviewmode: () => {},
 		oncreatefolder: () => {},
+		onuploadfiles: () => {},
 	}}
 />
 
@@ -45,5 +46,6 @@
 		onnavigate: () => {},
 		onviewmode: () => {},
 		oncreatefolder: () => {},
+		onuploadfiles: () => {},
 	}}
 />

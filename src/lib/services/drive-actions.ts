@@ -39,6 +39,9 @@ type FileMetadataShape = {
 /** Misskey APIのエラーコードに対応する日本語メッセージ */
 const DRIVE_ERROR_MESSAGES: Record<string, string> = {
 	HAS_CHILD_FILES_OR_FOLDERS: 'フォルダが空ではないため削除できません',
+	INAPPROPRIATE: '不適切な内容と判定されたためアップロードできません',
+	INVALID_FILE_NAME: 'ファイル名が不正です',
+	NO_FREE_SPACE: 'ドライブの空き容量が不足しています',
 	NO_SUCH_FILE: '対象が見つかりません。同期し直してください',
 	NO_SUCH_FOLDER: '対象が見つかりません。同期し直してください',
 	RECURSIVE_NESTING: 'フォルダを自身の中へ移動することはできません',

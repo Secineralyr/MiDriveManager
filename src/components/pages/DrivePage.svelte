@@ -1,5 +1,10 @@
 <script lang="ts">
-	import type { AccountRecord, FileRecord, FolderRecord } from '../../lib/db/schema';
+	import type { AccountRecord, FileRecord } from '../../lib/db/schema';
+	import {
+		detailTargetItem,
+		detailTargetName,
+		resolveDetailTarget,
+	} from '../../lib/services/detail-target';
 	import {
 		makeSelectionKey,
 		parseSelectionKey,
@@ -8,28 +13,11 @@
 	import DriveActionDialogs from '$components/organisms/DriveActionDialogs.svelte';
 	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
 	import PreviewModal from '$components/organisms/PreviewModal.svelte';
-	import type { ShortcutAction } from '../../lib/utils/shortcuts';
-	import { clipboardStore } from '../../lib/stores/clipboard.svelte';
+	import { createDriveShortcuts } from '../../lib/stores/drive-shortcuts';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
 	import { driveTasks } from '../../lib/stores/drive-tasks';
-	import { resolveShortcut } from '../../lib/utils/shortcuts';
 	import { syncStore } from '../../lib/stores/sync.svelte';
-
-	/** 詳細パネルの表示対象(DetailsPanelのDetailTargetと同じ形) */
-	type DetailTarget =
-		| {
-				/** 対象の種別 */
-				kind: 'file';
-				/** 対象のファイル */
-				file: FileRecord;
-		  }
-		| {
-				/** 対象の種別 */
-				kind: 'folder';
-				/** 対象のフォルダ */
-				folder: FolderRecord;
-		  };
 
 	type Props = {
 		/** 表示するアカウント */
@@ -52,21 +40,13 @@
 
 	const effectiveKeys = $derived(selectionStore.keys.filter((key) => orderedKeys.includes(key)));
 
-	const detailTarget = $derived.by((): DetailTarget | null => {
+	const detailTarget = $derived.by(() => {
 		const lastKey = effectiveKeys.at(-1);
-		if (lastKey === undefined) {
-			return null;
-		}
-		const folder = driveStore.childFolders.find(
-			(candidate) => makeSelectionKey('folder', candidate.id) === lastKey,
-		);
-		if (folder !== undefined) {
-			return { kind: 'folder', folder };
-		}
-		const file = driveStore.files.find(
-			(candidate) => makeSelectionKey('file', candidate.id) === lastKey,
-		);
-		return file === undefined ? null : { kind: 'file', file };
+		return resolveDetailTarget({
+			last: lastKey === undefined ? null : parseSelectionKey(lastKey),
+			folders: driveStore.childFolders,
+			files: driveStore.files,
+		});
 	});
 
 	const selectionSize = $derived(
@@ -75,23 +55,22 @@
 			.reduce((sum, file) => sum + file.size, 0),
 	);
 
-	const renameInitial = $derived.by(() => {
-		if (detailTarget === null) {
-			return '';
-		}
-		return detailTarget.kind === 'file' ? detailTarget.file.name : detailTarget.folder.name;
-	});
-
-	const renameItem = $derived.by((): { kind: 'file' | 'folder'; id: string } | null => {
-		if (detailTarget === null) {
-			return null;
-		}
-		return detailTarget.kind === 'file'
-			? { kind: 'file', id: detailTarget.file.id }
-			: { kind: 'folder', id: detailTarget.folder.id };
-	});
-
+	const renameInitial = $derived(detailTargetName(detailTarget));
+	const renameItem = $derived(detailTargetItem(detailTarget));
 	const deleteTargets = $derived(effectiveKeys.map((key) => parseSelectionKey(key)));
+
+	const shortcuts = createDriveShortcuts({
+		account: () => account,
+		orderedKeys: () => orderedKeys,
+		effectiveKeys: () => effectiveKeys,
+		blocked: () => createOpen || renameOpen || deleteOpen || previewFile !== null,
+		openDelete: () => {
+			deleteOpen = true;
+		},
+		openRename: () => {
+			renameOpen = true;
+		},
+	});
 
 	/**
 	 * ファイルのメタデータ保存を実行する
@@ -151,99 +130,20 @@
 	};
 
 	/**
-	 * 選択中の項目をクリップボードへ入れる
-	 * @param mode - copy(コピー)またはcut(切り取り)
+	 * OSからドロップされたファイル・フォルダのアップロードを操作キューへ積む
+	 * @param targetFolderId - ドロップ先のフォルダID(ルートはnull)
+	 * @param transfer - ドロップされたデータ
 	 */
-	const copySelection = (mode: 'copy' | 'cut') => {
-		const items = effectiveKeys.map((key) => parseSelectionKey(key));
-		if (items.length === 0) {
-			return;
-		}
-
-		if (mode === 'copy') {
-			clipboardStore.setCopy(account.id, items);
-		} else {
-			clipboardStore.setCut(account.id, items);
-		}
-	};
-
-	/** クリップボードの内容の貼り付け(移動または複製)を操作キューへ積む */
-	const pasteClipboard = async () => {
-		const result = await clipboardStore.pasteInto(account, driveStore.currentFolderId);
-		if (result === 'moved') {
-			selectionStore.clear();
-		}
+	const handleDropFiles = (targetFolderId: string | null, transfer: DataTransfer) => {
+		const _ = driveTasks.uploadDropped(account, { transfer, targetFolderId });
 	};
 
 	/**
-	 * 入力中やダイアログ表示中はショートカットを無効にする
-	 * @param event - キーボードイベント
-	 * @returns 無効にするならtrue
+	 * ツールバーで選ばれたファイルを表示中フォルダへアップロードする
+	 * @param files - アップロードするファイル
 	 */
-	const shouldIgnoreShortcut = (event: KeyboardEvent) => {
-		if (createOpen || renameOpen || deleteOpen || previewFile !== null) {
-			return true;
-		}
-
-		const { target } = event;
-		return (
-			target instanceof HTMLElement &&
-			(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-		);
-	};
-
-	/**
-	 * ショートカット操作を実行する
-	 * @param action - 実行する操作
-	 */
-	const runShortcut = (action: ShortcutAction) => {
-		const handlers: Record<ShortcutAction, () => void> = {
-			selectAll: () => {
-				selectionStore.selectAll(orderedKeys);
-			},
-			copy: () => {
-				copySelection('copy');
-			},
-			cut: () => {
-				copySelection('cut');
-			},
-			paste: () => {
-				pasteClipboard();
-			},
-			delete: () => {
-				if (effectiveKeys.length > 0) {
-					deleteOpen = true;
-				}
-			},
-			rename: () => {
-				if (effectiveKeys.length === 1) {
-					renameOpen = true;
-				}
-			},
-			clearSelection: () => {
-				selectionStore.clear();
-			},
-		};
-		
-		handlers[action]();
-	};
-
-	/**
-	 * キー入力からショートカットを実行する
-	 * @param event - キーボードイベント
-	 */
-	const handleKeydown = (event: KeyboardEvent) => {
-		if (shouldIgnoreShortcut(event)) {
-			return;
-		}
-
-		const action = resolveShortcut({ key: event.key, ctrl: event.ctrlKey || event.metaKey });
-		if (action === null) {
-			return;
-		}
-
-		event.preventDefault();
-		runShortcut(action);
+	const handleUploadFiles = (files: File[]) => {
+		driveTasks.uploadFiles(account, { files, targetFolderId: driveStore.currentFolderId });
 	};
 
 	/**
@@ -293,7 +193,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={shortcuts.handleKeydown} onpaste={shortcuts.handlePaste} />
 
 <DriveExplorer
 	childrenMap={driveStore.childrenMap}
@@ -339,6 +239,8 @@
 	ondragstartitem={handleDragStartItem}
 	ondragenditem={handleDragEndItem}
 	ondropitems={handleDropItems}
+	ondropfiles={handleDropFiles}
+	onuploadfiles={handleUploadFiles}
 />
 
 <DriveActionDialogs

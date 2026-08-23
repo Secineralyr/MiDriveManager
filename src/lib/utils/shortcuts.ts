@@ -1,19 +1,14 @@
 /** ショートカットに割り当てられた操作 */
-type ShortcutActionShape =
-	| 'selectAll'
-	| 'copy'
-	| 'cut'
-	| 'paste'
-	| 'delete'
-	| 'rename'
-	| 'clearSelection';
+type ShortcutActionShape = 'selectAll' | 'copy' | 'cut' | 'delete' | 'rename' | 'clearSelection';
 
-/** Ctrl/Cmd併用時のキーと操作の対応 */
+/**
+ * Ctrl/Cmd併用時のキーと操作の対応
+ * Ctrl+Vは含めない。貼り付けはOSクリップボードのファイルも扱うため、keydownではなくpasteイベントで処理する
+ */
 const CTRL_SHORTCUTS: Record<string, ShortcutActionShape> = {
 	a: 'selectAll',
 	c: 'copy',
 	x: 'cut',
-	v: 'paste',
 };
 
 /** 単独キーと操作の対応 */

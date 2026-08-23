@@ -23,6 +23,8 @@
 		ondragenditem?: () => void;
 		/** フォルダへの項目ドロップ時の処理 */
 		ondropinfolder?: (folderId: string) => void;
+		/** フォルダへのOSファイルドロップ時の処理 */
+		ondropfilesinfolder?: (folderId: string, transfer: DataTransfer) => void;
 	};
 
 	let {
@@ -35,6 +37,7 @@
 		ondragstartitem,
 		ondragenditem,
 		ondropinfolder,
+		ondropfilesinfolder,
 	}: Props = $props();
 
 	/**
@@ -50,6 +53,22 @@
 
 		return () => {
 			handler(folderId);
+		};
+	};
+
+	/**
+	 * フォルダカードへのOSファイルドロップ処理を作る
+	 * @param folderId - 対象のフォルダID
+	 * @returns ドロップ処理。受け付けない場合はundefined
+	 */
+	const dropFilesHandlerFor = (folderId: string) => {
+		const handler = ondropfilesinfolder;
+		if (handler === undefined) {
+			return handler;
+		}
+
+		return (transfer: DataTransfer) => {
+			handler(folderId, transfer);
 		};
 	};
 </script>
@@ -75,6 +94,7 @@
 					}}
 					{ondragenditem}
 					ondropitems={dropHandlerFor(folder.id)}
+					ondropfiles={dropFilesHandlerFor(folder.id)}
 				/>
 			</li>
 		{/each}
