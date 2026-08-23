@@ -35,7 +35,11 @@
 
 <Story
 	name="画像"
-	args={{ file: makeFile({ name: 'がぞー.png', mimeType: 'image/png' }), onclose: () => {} }}
+	args={{
+		file: makeFile({ name: 'がぞー.png', mimeType: 'image/png' }),
+		onclose: () => {},
+		ondownload: () => {},
+	}}
 />
 
 <Story

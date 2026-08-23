@@ -104,6 +104,8 @@
 		ondropitems: () => {},
 		ondropfiles: () => {},
 		onuploadfiles: () => {},
+		ondownloadselection: () => {},
+		onopenmenu: () => {},
 	};
 
 	const { Story } = defineMeta({

@@ -76,6 +76,10 @@
 		ondropfiles: (folderId: string | null, transfer: DataTransfer) => void;
 		/** ツールバーのアップロードボタンでファイルが選ばれた時の処理 */
 		onuploadfiles: (files: File[]) => void;
+		/** 選択した項目のダウンロード要求時の処理 */
+		ondownloadselection: () => void;
+		/** 項目の右クリックでコンテキストメニューを開く操作 */
+		onopenmenu: (kind: 'file' | 'folder', id: string, position: { x: number; y: number }) => void;
 	};
 
 	let {
@@ -108,35 +112,12 @@
 		ondropitems,
 		ondropfiles,
 		onuploadfiles,
+		ondownloadselection,
+		onopenmenu,
 	}: Props = $props();
 
 	/** 一覧領域内でOSファイルをドラッグしている深さ(子要素の出入りで増減するため数で持つ) */
 	let fileDragDepth = $state(0);
-
-	/**
-	 * 一覧内のフォルダへのドロップを全体のドロップ処理へ渡す
-	 * @param folderId - 対象のフォルダID
-	 */
-	const handleDropInFolder = (folderId: string) => {
-		ondropitems(folderId);
-	};
-
-	/**
-	 * 一覧内のフォルダへのOSファイルドロップを全体のドロップ処理へ渡す
-	 * @param folderId - 対象のフォルダID
-	 * @param transfer - ドロップされたデータ
-	 */
-	const handleDropFilesInFolder = (folderId: string, transfer: DataTransfer) => {
-		ondropfiles(folderId, transfer);
-	};
-
-	/**
-	 * 一覧内のフォルダを開く
-	 * @param folderId - 開くフォルダID
-	 */
-	const handleOpenFolder = (folderId: string) => {
-		onnavigate(folderId);
-	};
 
 	/**
 	 * OSファイルが一覧領域へ入った時に深さを増やす
@@ -207,6 +188,7 @@
 		{#if selectedKeys.length > 0}
 			<SelectionBar
 				count={selectedKeys.length}
+				ondownload={ondownloadselection}
 				ondelete={ondeleteselection}
 				onclear={onclearselection}
 			/>
@@ -220,12 +202,13 @@
 				{selectedKeys}
 				{onsort}
 				{onselectitem}
-				onopenfolder={handleOpenFolder}
+				onopenfolder={onnavigate}
 				{onpreviewfile}
 				{ondragstartitem}
 				{ondragenditem}
-				ondropinfolder={handleDropInFolder}
-				ondropfilesinfolder={handleDropFilesInFolder}
+				ondropinfolder={ondropitems}
+				ondropfilesinfolder={ondropfiles}
+				{onopenmenu}
 			/>
 		{:else}
 			<FileGrid
@@ -233,12 +216,13 @@
 				{files}
 				{selectedKeys}
 				{onselectitem}
-				onopenfolder={handleOpenFolder}
+				onopenfolder={onnavigate}
 				{onpreviewfile}
 				{ondragstartitem}
 				{ondragenditem}
-				ondropinfolder={handleDropInFolder}
-				ondropfilesinfolder={handleDropFilesInFolder}
+				ondropinfolder={ondropitems}
+				ondropfilesinfolder={ondropfiles}
+				{onopenmenu}
 			/>
 		{/if}
 	</main>

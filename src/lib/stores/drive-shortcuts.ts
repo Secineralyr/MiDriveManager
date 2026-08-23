@@ -1,7 +1,6 @@
 import { clipboardFiles, writeClipboardText } from '../utils/os-clipboard';
 import { parseSelectionKey, selectionStore } from './selection.svelte';
 import type { AccountRecord } from '../db/schema';
-import type { DriveItem } from '../services/drive-actions';
 import type { ShortcutAction } from '../utils/shortcuts';
 import { clipboardStore } from './clipboard.svelte';
 import { driveStore } from './drive.svelte';
@@ -58,16 +57,6 @@ const isEditableTarget = (target: EventTarget | null) =>
 	(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
 
 /**
- * 項目の表示名を表示中の一覧から探す
- * @param item - 対象の項目
- * @returns 表示名。一覧になければundefined
- */
-const nameOf = (item: DriveItem) =>
-	item.kind === 'file'
-		? driveStore.files.find((file) => file.id === item.id)?.name
-		: driveStore.childFolders.find((folder) => folder.id === item.id)?.name;
-
-/**
  * 入力中やダイアログ表示中はショートカットを無効にする
  * @param context - ページから受け取る文脈
  * @param target - イベントの発生元
@@ -94,7 +83,7 @@ const copySelection = (context: ShortcutContext, mode: 'copy' | 'cut') => {
 		clipboardStore.setCut(context.account().id, items);
 	}
 
-	const names = items.map((item) => nameOf(item)).filter((name) => name !== undefined);
+	const names = items.map((item) => driveStore.nameOf(item)).filter((name) => name !== undefined);
 	const _ = writeClipboardText(names.join('\n'));
 };
 
@@ -144,11 +133,37 @@ const runShortcut = (context: ShortcutContext, action: ShortcutAction) => {
 };
 
 /**
+ * 貼り付けの内容に応じて、OSのファイルのアップロードかアプリ内クリップボードの貼り付けを行う
+ * @param context - ページから受け取る文脈
+ * @param clipboardData - クリップボードのデータ
+ */
+const pasteFrom = (context: ShortcutContext, clipboardData: PasteInputLike['clipboardData']) => {
+	const files = clipboardFiles(clipboardData);
+	if (files.length > 0) {
+		driveTasks.uploadFiles(context.account(), {
+			files,
+			targetFolderId: driveStore.currentFolderId,
+		});
+		return;
+	}
+
+	const _ = pasteClipboard(context);
+};
+
+/**
  * ページのショートカット(キー入力と貼り付け)の処理を作る
  * @param context - ページから受け取る文脈
  * @returns キー入力と貼り付けのイベント処理
  */
 export const createDriveShortcuts = (context: ShortcutContext) => ({
+	/**
+	 * ショートカット操作を直接実行する(コンテキストメニューなどキー入力以外の入口用)
+	 * @param action - 実行する操作
+	 */
+	run(action: ShortcutAction) {
+		runShortcut(context, action);
+	},
+
 	/**
 	 * キー入力からショートカットを実行する
 	 * @param event - キーボードイベント
@@ -179,15 +194,6 @@ export const createDriveShortcuts = (context: ShortcutContext) => ({
 		}
 
 		event.preventDefault();
-		const files = clipboardFiles(event.clipboardData);
-		if (files.length > 0) {
-			driveTasks.uploadFiles(context.account(), {
-				files,
-				targetFolderId: driveStore.currentFolderId,
-			});
-			return;
-		}
-
-		const _ = pasteClipboard(context);
+		pasteFrom(context, event.clipboardData);
 	},
 });

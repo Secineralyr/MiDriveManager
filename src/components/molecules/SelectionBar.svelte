@@ -1,23 +1,29 @@
 <script lang="ts">
 	import IconButton from '$components/atoms/IconButton.svelte';
+	import IconDownload from '@tabler/icons-svelte/icons/download';
 	import IconTrash from '@tabler/icons-svelte/icons/trash';
 	import IconX from '@tabler/icons-svelte/icons/x';
 
 	type Props = {
 		/** 選択中の件数 */
 		count: number;
+		/** ダウンロード要求時の処理 */
+		ondownload: () => void;
 		/** 削除要求時の処理 */
 		ondelete: () => void;
 		/** 選択解除時の処理 */
 		onclear: () => void;
 	};
 
-	let { count, ondelete, onclear }: Props = $props();
+	let { count, ondownload, ondelete, onclear }: Props = $props();
 </script>
 
 <p role="status">
 	<span>{count}件選択</span>
 	<span>
+		<IconButton label="選択した項目をダウンロード" onclick={ondownload}>
+			<IconDownload size={16} />
+		</IconButton>
 		<IconButton label="選択した項目を削除" onclick={ondelete}>
 			<IconTrash size={16} />
 		</IconButton>

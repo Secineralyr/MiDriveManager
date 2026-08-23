@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { FileRecord } from '../../lib/db/schema';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
+	import IconDownload from '@tabler/icons-svelte/icons/download';
 	import IconX from '@tabler/icons-svelte/icons/x';
 	import { fileKind } from '../../lib/utils/file-kind';
 	import { formatFileSize } from '../../lib/utils/format';
@@ -10,9 +11,11 @@
 		file: FileRecord | null;
 		/** 閉じる操作 */
 		onclose: () => void;
+		/** ダウンロード操作(指定した場合だけボタンを表示する) */
+		ondownload?: (file: FileRecord) => void;
 	};
 
-	let { file, onclose }: Props = $props();
+	let { file, onclose, ondownload }: Props = $props();
 
 	let dialog = $state<HTMLDialogElement | null>(null);
 
@@ -60,6 +63,17 @@
 			</button>
 			<h2>{file.name}</h2>
 			<span>{file.type} / {formatFileSize(file.size)}</span>
+			{#if ondownload !== undefined}
+				<button
+					type="button"
+					aria-label="ダウンロード"
+					onclick={() => {
+						ondownload(file);
+					}}
+				>
+					<IconDownload size={20} />
+				</button>
+			{/if}
 		</header>
 		<div data-close-target>
 			{#if kind === 'image'}

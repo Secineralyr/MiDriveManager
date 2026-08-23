@@ -7,6 +7,7 @@ import {
 } from '../services/drive-actions';
 import type { AccountRecord } from '../db/schema';
 import { createDriveClient } from '../api/client';
+import { driveStore } from './drive.svelte';
 
 /** 基本操作用APIクライアントの生成関数 */
 type ActionsClientFactory = (host: string, token: string) => ActionsClient;
@@ -25,11 +26,38 @@ const state = $state<ActionsState>({
 });
 
 /**
- * 操作を実行し、実行中フラグとエラーメッセージを状態へ反映する
+ * 対象アカウントのドライブを表示中なら、キャッシュから再読み込みする
+ * @param accountId - 対象アカウントのアプリ内ID
+ */
+const refreshIfShowing = async (accountId: string) => {
+	if (driveStore.accountId === accountId) {
+		await driveStore.refresh();
+	}
+};
+
+/**
+ * 操作を実行し、失敗したらエラーメッセージを状態へ記録する
  * @param task - 実行する操作
  * @returns 成功したらtrue
  */
-const withAction = async (task: () => Promise<void>) => {
+const runAndCapture = async (task: () => Promise<void>) => {
+	try {
+		await task();
+		return true;
+	} catch (error) {
+		state.error = error instanceof Error ? error.message : '操作に失敗しました';
+		return false;
+	}
+};
+
+/**
+ * 操作を実行し、実行中フラグとエラーメッセージを状態へ反映する
+ * 成功時、対象アカウントのドライブを表示中ならキャッシュから再読み込みする
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param task - 実行する操作
+ * @returns 成功したらtrue
+ */
+const withAction = async (accountId: string, task: () => Promise<void>) => {
 	if (state.busy) {
 		return false;
 	}
@@ -37,15 +65,13 @@ const withAction = async (task: () => Promise<void>) => {
 	state.busy = true;
 	state.error = null;
 
-	try {
-		await task();
-		return true;
-	} catch (error) {
-		state.error = error instanceof Error ? error.message : '操作に失敗しました';
-		return false;
-	} finally {
-		state.busy = false;
+	const ok = await runAndCapture(task);
+	state.busy = false;
+	if (ok) {
+		await refreshIfShowing(accountId);
 	}
+
+	return ok;
 };
 
 /** ドライブの基本操作(作成・リネーム・メタデータ編集)を実行するストア */
@@ -88,7 +114,7 @@ export const driveActionsStore = {
 		},
 		clientFactory: ActionsClientFactory = createDriveClient,
 	) {
-		return withAction(async () => {
+		return withAction(account.id, async () => {
 			await createFolder(account.id, clientFactory(account.host, account.token), input);
 		});
 	},
@@ -110,7 +136,7 @@ export const driveActionsStore = {
 		},
 		clientFactory: ActionsClientFactory = createDriveClient,
 	) {
-		return withAction(async () => {
+		return withAction(account.id, async () => {
 			const client = clientFactory(account.host, account.token);
 			await (input.item.kind === 'file'
 				? renameFile(account.id, client, { fileId: input.item.id, name: input.name })
@@ -135,7 +161,7 @@ export const driveActionsStore = {
 		},
 		clientFactory: ActionsClientFactory = createDriveClient,
 	) {
-		return withAction(async () => {
+		return withAction(account.id, async () => {
 			await updateFileMetadata(account.id, clientFactory(account.host, account.token), input);
 		});
 	},

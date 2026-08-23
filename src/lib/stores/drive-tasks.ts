@@ -1,7 +1,9 @@
 import type { AccountRecord, FileRecord } from '../db/schema';
 import type { ActionsClient, DriveItem } from '../services/drive-actions';
 import type { UploadClient, UploadEntry } from '../services/upload';
+import { collectDownloadEntries, downloadEntries } from '../services/download';
 import { copyFilesToFolder, moveItems } from '../services/drive-move';
+import { downloadLabel, notifyExisting, uploadLabel, zipNameFor } from './drive-task-labels';
 import { filesToUploadEntries, readDroppedEntries, uploadEntries } from '../services/upload';
 import type { ProgressReporter } from './queue.svelte';
 import { createDriveClient } from '../api/client';
@@ -9,7 +11,6 @@ import { deleteItems } from '../services/drive-actions';
 import { driveStore } from './drive.svelte';
 import { queueStore } from './queue.svelte';
 import { syncStore } from './sync.svelte';
-import { toastStore } from './toast.svelte';
 
 /** 一括操作用APIクライアントの生成関数 */
 type ActionsClientFactory = (host: string, token: string) => ActionsClient;
@@ -17,34 +18,8 @@ type ActionsClientFactory = (host: string, token: string) => ActionsClient;
 /** アップロード用APIクライアントの生成関数 */
 type UploadClientFactory = (host: string, token: string) => UploadClient;
 
-/**
- * アップロードタスクの表示名を作る
- * @param entries - アップロード対象の一覧
- * @returns 表示名(1件ならファイル名、複数なら件数)
- */
-const uploadLabel = (entries: UploadEntry[]) => {
-	const [first] = entries;
-	if (entries.length === 1 && first !== undefined) {
-		return `${first.file.name}をアップロード`;
-	}
-
-	return `${entries.length}件のアップロード`;
-};
-
-/**
- * 既存のファイルが返された件数をトーストで知らせる
- * @param count - 既存のファイルが返された件数
- */
-const notifyExisting = (count: number) => {
-	if (count === 0) {
-		return;
-	}
-
-	toastStore.show({
-		kind: 'info',
-		message: `${count}件は同じ内容のファイルが既にあるため、既存のファイルをそのまま使用しました`,
-	});
-};
+/** ダウンロードの取得・保存の差し替え(テスト用) */
+type DownloadOverrides = Pick<Parameters<typeof downloadEntries>[0], 'fetchImpl' | 'save'>;
 
 /**
  * 対象アカウントのドライブを表示中なら、キャッシュから再読み込みする
@@ -153,6 +128,40 @@ export const driveTasks = {
 	) {
 		const entries = await readDroppedEntries(input.transfer);
 		return this.uploadEntries(account, { entries, targetFolderId: input.targetFolderId });
+	},
+
+	/**
+	 * 項目のダウンロードをキューへ積む(1件のファイルはそのまま、それ以外はzip)
+	 * @param account - 対象アカウント
+	 * @param items - ダウンロードする項目
+	 * @param overrides - 取得・保存の差し替え(テスト用)
+	 * @returns 積んだタスクの識別子。対象が空ならnull
+	 */
+	download(account: AccountRecord, items: DriveItem[], overrides: DownloadOverrides = {}) {
+		if (items.length === 0) {
+			return null;
+		}
+
+		return queueStore.enqueue({
+			account,
+			kind: 'download',
+			label: downloadLabel(items),
+			run: async (report) => {
+				const entries = await collectDownloadEntries(account.id, items);
+				if (entries.length === 0) {
+					throw new Error('ダウンロードできるファイルがありません');
+				}
+
+				const [first] = items;
+				await downloadEntries({
+					entries,
+					zipName: zipNameFor(items),
+					forceZip: !(items.length === 1 && first?.kind === 'file'),
+					onProgress: report,
+					...overrides,
+				});
+			},
+		});
 	},
 
 	/**

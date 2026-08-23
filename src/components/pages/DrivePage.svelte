@@ -10,9 +10,12 @@
 		parseSelectionKey,
 		selectionStore,
 	} from '../../lib/stores/selection.svelte';
+	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 	import DriveActionDialogs from '$components/organisms/DriveActionDialogs.svelte';
 	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
+	import type { MenuAction } from '../../lib/services/context-menu';
 	import PreviewModal from '$components/organisms/PreviewModal.svelte';
+	import { buildSelectionMenu } from '../../lib/services/context-menu';
 	import { createDriveShortcuts } from '../../lib/stores/drive-shortcuts';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
@@ -32,6 +35,7 @@
 	let renameOpen = $state(false);
 	let deleteOpen = $state(false);
 	let draggedKeys = $state<string[]>([]);
+	let menuPosition = $state<{ x: number; y: number } | null>(null);
 
 	const orderedKeys = $derived([
 		...driveStore.childFolders.map((folder) => makeSelectionKey('folder', folder.id)),
@@ -58,6 +62,7 @@
 	const renameInitial = $derived(detailTargetName(detailTarget));
 	const renameItem = $derived(detailTargetItem(detailTarget));
 	const deleteTargets = $derived(effectiveKeys.map((key) => parseSelectionKey(key)));
+	const menuItems = $derived(buildSelectionMenu(deleteTargets));
 
 	const shortcuts = createDriveShortcuts({
 		account: () => account,
@@ -73,25 +78,29 @@
 	});
 
 	/**
-	 * ファイルのメタデータ保存を実行する
+	 * ファイルのメタデータ保存を実行する(成功時の再読み込みはストアが行う)
 	 * @param metadata - 更新するメタデータ
 	 */
-	const handleSaveMetadata = async (metadata: {
+	const handleSaveMetadata = (metadata: {
 		/** コメント(代替テキスト)。空欄はnull */
 		comment: string | null;
 		/** センシティブフラグ */
 		isSensitive: boolean;
 	}) => {
-		if (detailTarget?.kind !== 'file') {
-			return;
+		if (detailTarget?.kind === 'file') {
+			driveActionsStore.saveFileMetadata(account, { fileId: detailTarget.file.id, metadata });
 		}
+	};
 
-		const ok = await driveActionsStore.saveFileMetadata(account, {
-			fileId: detailTarget.file.id,
-			metadata,
-		});
-		if (ok) {
-			await driveStore.refresh();
+	/**
+	 * 未選択の項目をその項目だけの選択にする(ドラッグ開始や右クリックの前処理)
+	 * @param kind - 項目の種別
+	 * @param id - 項目のID
+	 */
+	const selectIfUnselected = (kind: 'file' | 'folder', id: string) => {
+		const key = makeSelectionKey(kind, id);
+		if (!selectionStore.isSelected(key)) {
+			selectionStore.click(key, { toggle: false, range: false }, orderedKeys);
 		}
 	};
 
@@ -101,17 +110,36 @@
 	 * @param id - 項目のID
 	 */
 	const handleDragStartItem = (kind: 'file' | 'folder', id: string) => {
-		const key = makeSelectionKey(kind, id);
-		if (!selectionStore.isSelected(key)) {
-			selectionStore.click(key, { toggle: false, range: false }, orderedKeys);
-		}
-
+		selectIfUnselected(kind, id);
 		draggedKeys = [...selectionStore.keys];
 	};
 
-	/** ドラッグ状態を解除する */
-	const handleDragEndItem = () => {
-		draggedKeys = [];
+	/**
+	 * 右クリックされた項目を選択してコンテキストメニューを開く
+	 * @param kind - 項目の種別
+	 * @param id - 項目のID
+	 * @param position - 表示位置
+	 */
+	const handleOpenMenu = (kind: 'file' | 'folder', id: string, position: { x: number; y: number }) => {
+		selectIfUnselected(kind, id);
+		menuPosition = position;
+	};
+
+	/** 選択中の項目のダウンロードを操作キューへ積む */
+	const downloadSelection = () => {
+		driveTasks.download(account, deleteTargets);
+	};
+
+	/**
+	 * コンテキストメニューの操作を実行する
+	 * @param action - 選ばれた操作
+	 */
+	const handleMenuSelect = (action: MenuAction) => {
+		if (action === 'download') {
+			downloadSelection();
+		} else {
+			shortcuts.run(action);
+		}
 	};
 
 	/**
@@ -237,10 +265,25 @@
 	}}
 	actionBusy={driveActionsStore.busy}
 	ondragstartitem={handleDragStartItem}
-	ondragenditem={handleDragEndItem}
+	ondragenditem={() => {
+		draggedKeys = [];
+	}}
 	ondropitems={handleDropItems}
 	ondropfiles={handleDropFiles}
 	onuploadfiles={handleUploadFiles}
+	ondownloadselection={downloadSelection}
+	onopenmenu={handleOpenMenu}
+/>
+
+<ContextMenu
+	open={menuPosition !== null}
+	x={menuPosition?.x ?? 0}
+	y={menuPosition?.y ?? 0}
+	items={menuItems}
+	onselect={handleMenuSelect}
+	onclose={() => {
+		menuPosition = null;
+	}}
 />
 
 <DriveActionDialogs
@@ -257,5 +300,8 @@
 	file={previewFile}
 	onclose={() => {
 		previewFile = null;
+	}}
+	ondownload={(file) => {
+		driveTasks.download(account, [{ kind: 'file', id: file.id }]);
 	}}
 />

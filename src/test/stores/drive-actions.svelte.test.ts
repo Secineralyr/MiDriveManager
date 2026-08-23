@@ -3,6 +3,7 @@ import type { AccountRecord } from '../../lib/db/schema';
 import type { ActionsClient } from '../../lib/services/drive-actions';
 import { closeDatabase } from '../../lib/db/database';
 import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
+import { driveStore } from '../../lib/stores/drive.svelte';
 import type { entities } from 'misskey-js';
 import { stubIndexedDb } from '../indexeddb-test-util';
 
@@ -49,7 +50,8 @@ describe('基本操作ストア', () => {
 		stubIndexedDb();
 	});
 
-	it('成功するとtrueを返しエラーは残らない', async () => {
+	it('成功するとtrueを返しエラーは残らず、表示中のドライブが再読み込みされる', async () => {
+		await driveStore.openAccount('a1');
 		const ok = await driveActionsStore.createFolder(
 			account,
 			{ name: '新規', parentId: null },
@@ -58,6 +60,7 @@ describe('基本操作ストア', () => {
 		expect(ok).toBe(true);
 		expect(driveActionsStore.busy).toBe(false);
 		expect(driveActionsStore.error).toBeNull();
+		expect(driveStore.childFolders.map((folder) => folder.id)).toStrictEqual(['new1']);
 	});
 
 	it('失敗するとfalseを返しエラーメッセージが保持される', async () => {
@@ -73,6 +76,13 @@ describe('基本操作ストア', () => {
 		expect(driveActionsStore.error).toBe('作成に失敗しました');
 		driveActionsStore.clearError();
 		expect(driveActionsStore.error).toBeNull();
+	});
+});
+
+describe('基本操作ストアの多重実行', () => {
+	beforeEach(async () => {
+		await closeDatabase();
+		stubIndexedDb();
 	});
 
 	it('実行中は別の操作を受け付けない', async () => {

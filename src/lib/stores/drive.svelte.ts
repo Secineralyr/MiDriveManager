@@ -4,6 +4,7 @@ import { buildChildrenMap, folderPath } from '../services/folder-tree';
 import { getViewMode, setViewMode } from '../db/settings';
 import { listAccountFolders, listFilesInFolder } from '../db/drive-cache';
 import { sortFiles, sortFolders } from '../utils/drive-sort';
+import type { DriveItem } from '../services/drive-actions';
 import type { ViewMode } from '../db/settings';
 
 /** ドライブ閲覧の状態 */
@@ -160,6 +161,17 @@ export const driveStore = {
 	/** エラーメッセージを消す */
 	clearError() {
 		state.error = null;
+	},
+
+	/**
+	 * 項目の表示名を返す(フォルダは全フォルダから、ファイルは表示中フォルダ直下から探す)
+	 * @param item - 対象の項目
+	 * @returns 表示名。見つからなければundefined
+	 */
+	nameOf(item: DriveItem) {
+		return item.kind === 'file'
+			? state.files.find((file) => file.id === item.id)?.name
+			: state.allFolders.find((folder) => folder.id === item.id)?.name;
 	},
 
 	/**

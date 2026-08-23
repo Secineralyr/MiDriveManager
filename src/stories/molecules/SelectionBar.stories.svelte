@@ -8,6 +8,6 @@
 	});
 </script>
 
-<Story name="単一選択" args={{ count: 1, ondelete: () => {}, onclear: () => {} }} />
+<Story name="単一選択" args={{ count: 1, ondownload: () => {}, ondelete: () => {}, onclear: () => {} }} />
 
-<Story name="複数選択" args={{ count: 12, ondelete: () => {}, onclear: () => {} }} />
+<Story name="複数選択" args={{ count: 12, ondownload: () => {}, ondelete: () => {}, onclear: () => {} }} />

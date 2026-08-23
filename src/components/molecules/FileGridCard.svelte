@@ -26,6 +26,8 @@
 		ondropitems?: () => void;
 		/** このカード(フォルダ)へのOSファイルドロップ時の処理 */
 		ondropfiles?: (transfer: DataTransfer) => void;
+		/** 右クリックでコンテキストメニューを開く操作(表示位置を渡す) */
+		onopenmenu?: (position: { x: number; y: number }) => void;
 	};
 
 	let {
@@ -40,6 +42,7 @@
 		ondragenditem,
 		ondropitems,
 		ondropfiles,
+		onopenmenu,
 	}: Props = $props();
 
 	let dropover = $state(false);
@@ -56,6 +59,20 @@
 	/** ダブルクリックを外部ハンドラへ伝える */
 	const handleDblClick = () => {
 		onopen?.();
+	};
+
+	/**
+	 * 右クリックでブラウザのメニューの代わりにコンテキストメニューを開く
+	 * @param event - マウスイベント
+	 */
+	const handleContextMenu = (event: MouseEvent) => {
+		if (onopenmenu === undefined) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		onopenmenu({ x: event.clientX, y: event.clientY });
 	};
 
 	/**
@@ -106,6 +123,7 @@
 	draggable="true"
 	onclick={handleClick}
 	ondblclick={handleDblClick}
+	oncontextmenu={handleContextMenu}
 	ondragstart={handleDragStart}
 	ondragend={handleDragEnd}
 	ondragover={handleDragOver}

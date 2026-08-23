@@ -25,6 +25,8 @@
 		ondropinfolder?: (folderId: string) => void;
 		/** フォルダへのOSファイルドロップ時の処理 */
 		ondropfilesinfolder?: (folderId: string, transfer: DataTransfer) => void;
+		/** 項目の右クリックでコンテキストメニューを開く操作 */
+		onopenmenu?: (kind: 'file' | 'folder', id: string, position: { x: number; y: number }) => void;
 	};
 
 	let {
@@ -38,6 +40,7 @@
 		ondragenditem,
 		ondropinfolder,
 		ondropfilesinfolder,
+		onopenmenu,
 	}: Props = $props();
 
 	/**
@@ -95,6 +98,9 @@
 					{ondragenditem}
 					ondropitems={dropHandlerFor(folder.id)}
 					ondropfiles={dropFilesHandlerFor(folder.id)}
+					onopenmenu={(position) => {
+						onopenmenu?.('folder', folder.id, position);
+					}}
 				/>
 			</li>
 		{/each}
@@ -115,6 +121,9 @@
 						ondragstartitem?.('file', file.id);
 					}}
 					{ondragenditem}
+					onopenmenu={(position) => {
+						onopenmenu?.('file', file.id, position);
+					}}
 				/>
 			</li>
 		{/each}

@@ -47,14 +47,11 @@
 	 * @param name - フォルダ名
 	 */
 	const handleCreate = async (name: string) => {
-		const ok = await driveActionsStore.createFolder(account, {
+		await driveActionsStore.createFolder(account, {
 			name,
 			parentId: driveStore.currentFolderId,
 		});
 		createOpen = false;
-		if (ok) {
-			await driveStore.refresh();
-		}
 	};
 
 	/**
@@ -66,11 +63,8 @@
 			renameOpen = false;
 			return;
 		}
-		const ok = await driveActionsStore.rename(account, { item: renameItem, name });
+		await driveActionsStore.rename(account, { item: renameItem, name });
 		renameOpen = false;
-		if (ok) {
-			await driveStore.refresh();
-		}
 	};
 
 	/** 削除を確定する(操作キューへ積み、選択は解除する) */
