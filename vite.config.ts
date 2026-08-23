@@ -13,7 +13,7 @@ export default defineConfig({
 	plugins: [
 		svelte(),
 		svelteTesting(),
-		// oxlint-disable-next-line new-cap -- VitePWAの関数名でエラーになるため
+		// oxlint-disable-next-line new-cap - VitePWAの関数名でエラーになるため
 		VitePWA({
 			registerType: 'autoUpdate',
 			includeAssets: ['favicon.svg'],

@@ -1,5 +1,3 @@
-/* oxlint-disable eslint/no-await-in-loop -- 一括削除はレート制御のため逐次実行が要件 */
-
 import {
 	deleteCachedFile,
 	deleteCachedFolder,
@@ -18,6 +16,8 @@ type ActionsClientShape = Pick<
 	| 'driveFoldersDelete'
 	| 'driveFilesUpdate'
 	| 'driveFilesDelete'
+	| 'driveFilesMoveBulk'
+	| 'driveFilesUploadFromUrl'
 >;
 
 /** 削除対象の項目 */
@@ -36,18 +36,25 @@ type FileMetadataShape = {
 	isSensitive: boolean;
 };
 
+/** Misskey APIのエラーコードに対応する日本語メッセージ */
+const DRIVE_ERROR_MESSAGES: Record<string, string> = {
+	HAS_CHILD_FILES_OR_FOLDERS: 'フォルダが空ではないため削除できません',
+	NO_SUCH_FILE: '対象が見つかりません。同期し直してください',
+	NO_SUCH_FOLDER: '対象が見つかりません。同期し直してください',
+	RECURSIVE_NESTING: 'フォルダを自身の中へ移動することはできません',
+};
+
 /**
  * Misskey APIのエラーをアプリ向けのメッセージへ変換する
  * @param error - 発生したエラー
  * @returns 変換後のエラー
  */
-const translateDriveError = (error: unknown) => {
+const translateDriveErrorInternal = (error: unknown) => {
 	if (typeof error === 'object' && error !== null && 'code' in error) {
-		if (error.code === 'HAS_CHILD_FILES_OR_FOLDERS') {
-			return new Error('フォルダが空ではないため削除できません');
-		}
-		if (error.code === 'NO_SUCH_FILE' || error.code === 'NO_SUCH_FOLDER') {
-			return new Error('対象が見つかりません。同期し直してください');
+		const { code } = error;
+		const message = typeof code === 'string' ? DRIVE_ERROR_MESSAGES[code] : undefined;
+		if (message !== undefined) {
+			return new Error(message);
 		}
 	}
 	return error instanceof Error ? error : new Error('操作に失敗しました');
@@ -71,6 +78,13 @@ const deleteItem = async (accountId: string, client: ActionsClientShape, item: D
 
 /** 基本操作に必要なAPI呼び出し */
 export type ActionsClient = ActionsClientShape;
+
+/**
+ * Misskey APIのエラーをアプリ向けのメッセージへ変換する
+ * @param error - 発生したエラー
+ * @returns 変換後のエラー
+ */
+export const translateDriveError = translateDriveErrorInternal;
 
 /** 削除対象の項目 */
 export type DriveItem = DriveItemShape;
@@ -104,7 +118,7 @@ export const createFolder = async (
 		await putCachedFolder(record);
 		return record;
 	} catch (error) {
-		throw translateDriveError(error);
+		throw translateDriveErrorInternal(error);
 	}
 };
 
@@ -131,7 +145,7 @@ export const renameFile = async (
 		await putCachedFile(record);
 		return record;
 	} catch (error) {
-		throw translateDriveError(error);
+		throw translateDriveErrorInternal(error);
 	}
 };
 
@@ -161,7 +175,7 @@ export const renameFolder = async (
 		await putCachedFolder(record);
 		return record;
 	} catch (error) {
-		throw translateDriveError(error);
+		throw translateDriveErrorInternal(error);
 	}
 };
 
@@ -192,7 +206,7 @@ export const updateFileMetadata = async (
 		await putCachedFile(record);
 		return record;
 	} catch (error) {
-		throw translateDriveError(error);
+		throw translateDriveErrorInternal(error);
 	}
 };
 
@@ -206,9 +220,10 @@ export const updateFileMetadata = async (
 export const deleteItems = async (accountId: string, client: ActionsClient, items: DriveItem[]) => {
 	for (const item of items) {
 		try {
+			// oxlint-disable-next-line eslint/no-await-in-loop - 一括削除はレート制御のため逐次実行が要件
 			await deleteItem(accountId, client, item);
 		} catch (error) {
-			throw translateDriveError(error);
+			throw translateDriveErrorInternal(error);
 		}
 	}
 };

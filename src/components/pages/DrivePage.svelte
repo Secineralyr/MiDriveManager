@@ -1,17 +1,34 @@
 <script lang="ts">
-	import type { AccountRecord, FileRecord } from '../../lib/db/schema';
+	import type { AccountRecord, FileRecord, FolderRecord } from '../../lib/db/schema';
 	import {
 		makeSelectionKey,
 		parseSelectionKey,
 		selectionStore,
 	} from '../../lib/stores/selection.svelte';
-	import type { DetailTarget } from '$components/organisms/DetailsPanel.svelte';
 	import DriveActionDialogs from '$components/organisms/DriveActionDialogs.svelte';
 	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
 	import PreviewModal from '$components/organisms/PreviewModal.svelte';
+	import type { ShortcutAction } from '../../lib/utils/shortcuts';
+	import { clipboardStore } from '../../lib/stores/clipboard.svelte';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
+	import { resolveShortcut } from '../../lib/utils/shortcuts';
 	import { syncStore } from '../../lib/stores/sync.svelte';
+
+	/** 詳細パネルの表示対象(DetailsPanelのDetailTargetと同じ形) */
+	type DetailTarget =
+		| {
+				/** 対象の種別 */
+				kind: 'file';
+				/** 対象のファイル */
+				file: FileRecord;
+		  }
+		| {
+				/** 対象の種別 */
+				kind: 'folder';
+				/** 対象のフォルダ */
+				folder: FolderRecord;
+		  };
 
 	type Props = {
 		/** 表示するアカウント */
@@ -25,6 +42,7 @@
 	let createOpen = $state(false);
 	let renameOpen = $state(false);
 	let deleteOpen = $state(false);
+	let draggedKeys = $state<string[]>([]);
 
 	const orderedKeys = $derived([
 		...driveStore.childFolders.map((folder) => makeSelectionKey('folder', folder.id)),
@@ -63,50 +81,16 @@
 		return detailTarget.kind === 'file' ? detailTarget.file.name : detailTarget.folder.name;
 	});
 
-	/** すべての操作ダイアログを閉じる */
-	const closeDialogs = () => {
-		createOpen = false;
-		renameOpen = false;
-		deleteOpen = false;
-	};
-
-	/**
-	 * フォルダ作成を確定する
-	 * @param name - フォルダ名
-	 */
-	const handleCreateFolder = async (name: string) => {
-		const ok = await driveActionsStore.createFolder(account, {
-			name,
-			parentId: driveStore.currentFolderId,
-		});
-
-		createOpen = false;
-
-		if (ok) {
-			await driveStore.refresh();
-		}
-	};
-
-	/**
-	 * 名前の変更を確定する
-	 * @param name - 新しい名前
-	 */
-	const handleRename = async (name: string) => {
+	const renameItem = $derived.by((): { kind: 'file' | 'folder'; id: string } | null => {
 		if (detailTarget === null) {
-			renameOpen = false;
-			return;
+			return null;
 		}
+		return detailTarget.kind === 'file'
+			? { kind: 'file', id: detailTarget.file.id }
+			: { kind: 'folder', id: detailTarget.folder.id };
+	});
 
-		const item: { kind: 'file' | 'folder'; id: string } =
-			detailTarget.kind === 'file'
-				? { kind: 'file', id: detailTarget.file.id }
-				: { kind: 'folder', id: detailTarget.folder.id };
-		const ok = await driveActionsStore.rename(account, { item, name });
-		renameOpen = false;
-		if (ok) {
-			await driveStore.refresh();
-		}
-	};
+	const deleteTargets = $derived(effectiveKeys.map((key) => parseSelectionKey(key)));
 
 	/**
 	 * ファイルのメタデータ保存を実行する
@@ -131,15 +115,138 @@
 		}
 	};
 
-	/** 選択した項目の削除を実行する */
-	const handleDeleteSelection = async () => {
-		const items = effectiveKeys.map((key) => parseSelectionKey(key));
-		const ok = await driveActionsStore.deleteItems(account, items);
-		deleteOpen = false;
+	/**
+	 * 項目のドラッグ開始(未選択の項目はその項目だけを選択してから開始する)
+	 * @param kind - 項目の種別
+	 * @param id - 項目のID
+	 */
+	const handleDragStartItem = (kind: 'file' | 'folder', id: string) => {
+		const key = makeSelectionKey(kind, id);
+		if (!selectionStore.isSelected(key)) {
+			selectionStore.click(key, { toggle: false, range: false }, orderedKeys);
+		}
+
+		draggedKeys = [...selectionStore.keys];
+	};
+
+	/** ドラッグ状態を解除する */
+	const handleDragEndItem = () => {
+		draggedKeys = [];
+	};
+
+	/**
+	 * ドラッグ中の項目をフォルダへドロップして移動する
+	 * @param targetFolderId - 移動先のフォルダID(ルートはnull)
+	 */
+	const handleDropItems = async (targetFolderId: string | null) => {
+		const items = draggedKeys.map((key) => parseSelectionKey(key));
+		draggedKeys = [];
+		if (items.length === 0) {
+			return;
+		}
+
+		const ok = await driveActionsStore.moveItems(account, { items, targetFolderId });
 		if (ok) {
 			selectionStore.clear();
 		}
 		await driveStore.refresh();
+	};
+
+	/**
+	 * 選択中の項目をクリップボードへ入れる
+	 * @param mode - copy(コピー)またはcut(切り取り)
+	 */
+	const copySelection = (mode: 'copy' | 'cut') => {
+		const items = effectiveKeys.map((key) => parseSelectionKey(key));
+		if (items.length === 0) {
+			return;
+		}
+
+		if (mode === 'copy') {
+			clipboardStore.setCopy(account.id, items);
+		} else {
+			clipboardStore.setCut(account.id, items);
+		}
+	};
+
+	/** クリップボードの内容を表示中フォルダへ貼り付ける */
+	const pasteClipboard = async () => {
+		const result = await clipboardStore.pasteInto(account, driveStore.currentFolderId);
+		if (result === 'moved') {
+			selectionStore.clear();
+			await driveStore.refresh();
+		}
+	};
+
+	/**
+	 * 入力中やダイアログ表示中はショートカットを無効にする
+	 * @param event - キーボードイベント
+	 * @returns 無効にするならtrue
+	 */
+	const shouldIgnoreShortcut = (event: KeyboardEvent) => {
+		if (createOpen || renameOpen || deleteOpen || previewFile !== null) {
+			return true;
+		}
+
+		const { target } = event;
+		return (
+			target instanceof HTMLElement &&
+			(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+		);
+	};
+
+	/**
+	 * ショートカット操作を実行する
+	 * @param action - 実行する操作
+	 */
+	const runShortcut = (action: ShortcutAction) => {
+		const handlers: Record<ShortcutAction, () => void> = {
+			selectAll: () => {
+				selectionStore.selectAll(orderedKeys);
+			},
+			copy: () => {
+				copySelection('copy');
+			},
+			cut: () => {
+				copySelection('cut');
+			},
+			paste: () => {
+				pasteClipboard();
+			},
+			delete: () => {
+				if (effectiveKeys.length > 0) {
+					deleteOpen = true;
+				}
+			},
+			rename: () => {
+				if (effectiveKeys.length === 1) {
+					renameOpen = true;
+				}
+			},
+			clearSelection: () => {
+				selectionStore.clear();
+			},
+		};
+		
+		handlers[action]();
+	};
+
+	/**
+	 * キー入力からショートカットを実行する
+	 * @param event - キーボードイベント
+	 */
+	const handleKeydown = (event: KeyboardEvent) => {
+		if (shouldIgnoreShortcut(event)) {
+			return;
+		}
+
+		const action = resolveShortcut({ key: event.key, ctrl: event.ctrlKey || event.metaKey });
+		if (action === null) {
+			return;
+		}
+
+		event.preventDefault();
+		runShortcut(action);
 	};
 
 	/**
@@ -189,6 +296,8 @@
 	});
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <DriveExplorer
 	childrenMap={driveStore.childrenMap}
 	currentFolderId={driveStore.currentFolderId}
@@ -198,7 +307,6 @@
 	viewMode={driveStore.viewMode}
 	sortKey={driveStore.sortKey}
 	sortOrder={driveStore.sortOrder}
-	error={driveStore.error ?? driveActionsStore.error}
 	selectedKeys={effectiveKeys}
 	{detailTarget}
 	detailsOpen={effectiveKeys.length > 0 && !detailsClosed}
@@ -231,19 +339,19 @@
 		deleteOpen = true;
 	}}
 	actionBusy={driveActionsStore.busy}
+	ondragstartitem={handleDragStartItem}
+	ondragenditem={handleDragEndItem}
+	ondropitems={handleDropItems}
 />
 
 <DriveActionDialogs
-	{createOpen}
-	{renameOpen}
+	{account}
+	bind:createOpen
+	bind:renameOpen
+	bind:deleteOpen
+	{renameItem}
 	{renameInitial}
-	{deleteOpen}
-	deleteCount={effectiveKeys.length}
-	busy={driveActionsStore.busy}
-	oncreate={handleCreateFolder}
-	onrename={handleRename}
-	ondelete={handleDeleteSelection}
-	oncanceldialog={closeDialogs}
+	{deleteTargets}
 />
 
 <PreviewModal

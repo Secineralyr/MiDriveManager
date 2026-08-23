@@ -1,5 +1,3 @@
-/* oxlint-disable eslint/no-await-in-loop -- ページネーションはレート制御のため逐次実行が要件 */
-
 import { replaceDriveCache, toFileRecord, toFolderRecord } from '../db/drive-cache';
 import type { AccountRecord } from '../db/schema';
 import type { DriveClient } from '../api/client';
@@ -27,6 +25,7 @@ const fetchChildFolders = async (client: SyncClient, parentId: string | null) =>
 	let cursor: string | null = null;
 
 	while (true) {
+		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
 		const page = await client.driveFolders({
 			folderId: parentId,
 			limit: PAGE_LIMIT,
@@ -56,6 +55,7 @@ const fetchAllFolders = async (client: SyncClient, onCount: (count: number) => v
 
 	// for-ofの配列イテレーターは走査中にpushした要素も辿るため、キューとして機能する
 	for (const parent of parents) {
+		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
 		const children = await fetchChildFolders(client, parent);
 		all.push(...children);
 
@@ -79,6 +79,7 @@ const fetchAllFiles = async (client: SyncClient, onCount: (count: number) => voi
 	let cursor: string | null = null;
 
 	while (true) {
+		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
 		const page = await client.driveStream({ limit: PAGE_LIMIT, ...cursorParams(cursor) });
 		all.push(...page);
 		onCount(all.length);

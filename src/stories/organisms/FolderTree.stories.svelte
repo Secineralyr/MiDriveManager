@@ -35,6 +35,9 @@
 	});
 </script>
 
-<Story name="階層あり" args={{ childrenMap, currentFolderId: 'f1', onnavigate: () => {} }} />
+<Story
+	name="階層あり"
+	args={{ childrenMap, currentFolderId: 'f1', onnavigate: () => {}, ondropitems: () => {} }}
+/>
 
 <Story name="フォルダなし" args={{ childrenMap: {}, currentFolderId: null, onnavigate: () => {} }} />

@@ -103,6 +103,22 @@ const buildFileMethods = (context: ClientContext) => ({
 	 */
 	driveFilesDelete: (params: entities.DriveFilesDeleteRequest) =>
 		context.limiter.schedule(() => context.client.request('drive/files/delete', params)),
+	/**
+	 * 複数のファイルをまとめて別フォルダへ移動する
+	 * @param params - リクエストパラメータ
+	 * @returns なし
+	 */
+	driveFilesMoveBulk: (params: entities.DriveFilesMoveBulkRequest) =>
+		context.limiter.schedule(() => context.client.request('drive/files/move-bulk', params)),
+	/**
+	 * URLからファイルを取り込む(サーバー側で非同期に処理される)
+	 * @param params - リクエストパラメータ
+	 * @returns なし
+	 */
+	driveFilesUploadFromUrl: (params: entities.DriveFilesUploadFromUrlRequest) =>
+		context.limiter.schedule(() =>
+			context.client.request('drive/files/upload-from-url', params),
+		),
 });
 
 /**

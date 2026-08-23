@@ -26,6 +26,12 @@
 		onopenfolder: (folderId: string) => void;
 		/** ファイルのプレビューを開く操作 */
 		onpreviewfile: (file: FileRecord) => void;
+		/** 項目のドラッグ開始時の処理 */
+		ondragstartitem?: (kind: 'file' | 'folder', id: string) => void;
+		/** 項目のドラッグ終了時の処理 */
+		ondragenditem?: () => void;
+		/** フォルダへの項目ドロップ時の処理 */
+		ondropinfolder?: (folderId: string) => void;
 	};
 
 	let {
@@ -38,7 +44,26 @@
 		onselectitem,
 		onopenfolder,
 		onpreviewfile,
+		ondragstartitem,
+		ondragenditem,
+		ondropinfolder,
 	}: Props = $props();
+
+	/**
+	 * フォルダ行へのドロップ処理を作る
+	 * @param folderId - 対象のフォルダID
+	 * @returns ドロップ処理。受け付けない場合はundefined
+	 */
+	const dropHandlerFor = (folderId: string) => {
+		const handler = ondropinfolder;
+		if (handler === undefined) {
+			return handler;
+		}
+
+		return () => {
+			handler(folderId);
+		};
+	};
 
 	const COLUMNS: { key: SortKey; label: string }[] = [
 		{ key: 'name', label: '名前' },
@@ -85,6 +110,11 @@
 				onopen={() => {
 					onopenfolder(folder.id);
 				}}
+				ondragstartitem={() => {
+					ondragstartitem?.('folder', folder.id);
+				}}
+				{ondragenditem}
+				ondropitems={dropHandlerFor(folder.id)}
 			/>
 		{/each}
 		{#each files as file (file.id)}
@@ -100,6 +130,10 @@
 				onopen={() => {
 					onpreviewfile(file);
 				}}
+				ondragstartitem={() => {
+					ondragstartitem?.('file', file.id);
+				}}
+				{ondragenditem}
 			/>
 		{/each}
 		{#if folders.length === 0 && files.length === 0}

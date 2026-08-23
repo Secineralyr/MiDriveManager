@@ -28,8 +28,6 @@
 		sortKey: SortKey;
 		/** 並び替えの方向 */
 		sortOrder: SortOrder;
-		/** エラーメッセージ(正常時はnull) */
-		error: string | null;
 		/** 選択中の選択キー一覧 */
 		selectedKeys: string[];
 		/** 詳細パネルの表示対象 */
@@ -67,6 +65,12 @@
 		ondeleteselection: () => void;
 		/** 操作の実行中かどうか */
 		actionBusy: boolean;
+		/** 項目のドラッグ開始時の処理 */
+		ondragstartitem: (kind: 'file' | 'folder', id: string) => void;
+		/** 項目のドラッグ終了時の処理 */
+		ondragenditem: () => void;
+		/** フォルダへの項目ドロップ時の処理 */
+		ondropitems: (folderId: string | null) => void;
 	};
 
 	let {
@@ -78,7 +82,6 @@
 		viewMode,
 		sortKey,
 		sortOrder,
-		error,
 		selectedKeys,
 		detailTarget,
 		detailsOpen,
@@ -95,7 +98,18 @@
 		onsavemetadata,
 		ondeleteselection,
 		actionBusy,
+		ondragstartitem,
+		ondragenditem,
+		ondropitems,
 	}: Props = $props();
+
+	/**
+	 * 一覧内のフォルダへのドロップを全体のドロップ処理へ渡す
+	 * @param folderId - 対象のフォルダID
+	 */
+	const handleDropInFolder = (folderId: string) => {
+		ondropitems(folderId);
+	};
 
 	/**
 	 * 一覧内のフォルダを開く
@@ -108,7 +122,7 @@
 
 <div class="workspace">
 	<aside>
-		<FolderTree {childrenMap} {currentFolderId} {onnavigate} />
+		<FolderTree {childrenMap} {currentFolderId} {onnavigate} {ondropitems} />
 	</aside>
 	<main>
 		<DriveToolbar {breadcrumb} {viewMode} {onnavigate} {onviewmode} {oncreatefolder} />
@@ -118,9 +132,6 @@
 				ondelete={ondeleteselection}
 				onclear={onclearselection}
 			/>
-		{/if}
-		{#if error !== null}
-			<p role="alert">{error}</p>
 		{/if}
 		{#if viewMode === 'list'}
 			<FileList
@@ -133,6 +144,9 @@
 				{onselectitem}
 				onopenfolder={handleOpenFolder}
 				{onpreviewfile}
+				{ondragstartitem}
+				{ondragenditem}
+				ondropinfolder={handleDropInFolder}
 			/>
 		{:else}
 			<FileGrid
@@ -142,6 +156,9 @@
 				{onselectitem}
 				onopenfolder={handleOpenFolder}
 				{onpreviewfile}
+				{ondragstartitem}
+				{ondragenditem}
+				ondropinfolder={handleDropInFolder}
 			/>
 		{/if}
 	</main>
@@ -183,10 +200,5 @@
 		padding: 20px;
 		gap: 15px;
 		min-width: 0;
-	}
-
-	p[role='alert'] {
-		margin: 0;
-		color: var(--color-danger);
 	}
 </style>

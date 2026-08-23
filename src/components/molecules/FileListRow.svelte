@@ -20,6 +20,12 @@
 		onselect?: (modifiers: SelectModifiers) => void;
 		/** ダブルクリックで開く操作 */
 		onopen?: () => void;
+		/** ドラッグ開始時の処理 */
+		ondragstartitem?: () => void;
+		/** ドラッグ終了時の処理 */
+		ondragenditem?: () => void;
+		/** この行(フォルダ)への項目ドロップ時の処理 */
+		ondropitems?: () => void;
 	};
 
 	let {
@@ -31,7 +37,12 @@
 		selected = false,
 		onselect,
 		onopen,
+		ondragstartitem,
+		ondragenditem,
+		ondropitems,
 	}: Props = $props();
+
+	let dropover = $state(false);
 
 	/**
 	 * クリックを選択操作として通知する
@@ -46,13 +57,69 @@
 	const handleDblClick = () => {
 		onopen?.();
 	};
+
+	/**
+	 * ドラッグ開始を通知する
+	 * @param event - ドラッグイベント
+	 */
+	const handleDragStart = (event: DragEvent) => {
+		if (event.dataTransfer !== null) {
+			event.dataTransfer.setData('text/plain', name);
+			event.dataTransfer.effectAllowed = 'move';
+		}
+		ondragstartitem?.();
+	};
+
+	/** ドラッグ終了を通知する */
+	const handleDragEnd = () => {
+		ondragenditem?.();
+	};
+
+	/**
+	 * ドロップの受け入れを表明して強調する
+	 * @param event - ドラッグイベント
+	 */
+	const handleDragOver = (event: DragEvent) => {
+		if (ondropitems === undefined) {
+			return;
+		}
+		event.preventDefault();
+
+		if (event.dataTransfer !== null) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+
+		dropover = true;
+	};
+
+	/** ドロップ対象の強調を解除する */
+	const handleDragLeave = () => {
+		dropover = false;
+	};
+
+	/**
+	 * ドロップされた項目を受け取る
+	 * @param event - ドラッグイベント
+	 */
+	const handleDrop = (event: DragEvent) => {
+		event.preventDefault();
+		dropover = false;
+		ondropitems?.();
+	};
 </script>
 
 <tr
+	draggable="true"
 	onclick={handleClick}
 	ondblclick={handleDblClick}
+	ondragstart={handleDragStart}
+	ondragend={handleDragEnd}
+	ondragover={handleDragOver}
+	ondragleave={handleDragLeave}
+	ondrop={handleDrop}
 	data-openable={onopen !== undefined}
 	data-selected={selected}
+	data-dropover={dropover}
 	aria-selected={selected}
 >
 	<td>
@@ -80,6 +147,12 @@
 	}
 
 	tr[data-selected='true'] {
+		background-color: var(--color-surface-active);
+	}
+
+	tr[data-dropover='true'] {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
 		background-color: var(--color-surface-active);
 	}
 

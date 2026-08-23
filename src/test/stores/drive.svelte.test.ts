@@ -1,5 +1,5 @@
 import type { FileRecord, FolderRecord } from '../../lib/db/schema';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDatabase, openDatabase } from '../../lib/db/database';
 import { driveStore } from '../../lib/stores/drive.svelte';
 import { getViewMode } from '../../lib/db/settings';
@@ -133,5 +133,22 @@ describe('再読み込み', () => {
 
 		expect(driveStore.currentFolderId).toBeNull();
 		expect(driveStore.files.map((file) => file.id)).toStrictEqual(['f1']);
+	});
+});
+
+describe('エラーの消去', () => {
+	beforeEach(setupStore);
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('読み込みに失敗した後、clearErrorでエラーが消える', async () => {
+		await closeDatabase();
+		vi.stubGlobal('indexedDB', null);
+		await driveStore.openAccount('a1');
+		expect(driveStore.error).not.toBeNull();
+		driveStore.clearError();
+		expect(driveStore.error).toBeNull();
 	});
 });

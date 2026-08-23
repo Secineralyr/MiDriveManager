@@ -10,5 +10,5 @@ const config: StorybookConfig = {
 	staticDirs: ['../public'],
 };
 
-// oxlint-disable-next-line import/no-default-export -- Storybookの規約で設定はdefault exportが必要
+// oxlint-disable-next-line import/no-default-export - Storybookの規約で設定はdefault exportが必要
 export default config;

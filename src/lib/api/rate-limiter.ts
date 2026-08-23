@@ -1,5 +1,3 @@
-/* oxlint-disable eslint/no-await-in-loop -- レート制御は逐次実行が要件のため、ループ内のawaitが必須 */
-
 /** レートリミッターの内部設定(既定値解決済み) */
 type ResolvedOptions = {
 	/** リクエスト開始間隔の最小値(ミリ秒) */
@@ -26,6 +24,7 @@ type LimiterState = {
  * @returns 待機完了のPromise
  */
 const defaultSleep = (ms: number) =>
+	// oxlint-disable-next-line promise/avoid-new - setTimeoutをPromise化するには生成が必要
 	new Promise<void>((resolve) => {
 		setTimeout(resolve, ms);
 	});
@@ -51,7 +50,6 @@ const waitInterval = async (config: ResolvedOptions, limiterState: LimiterState)
 	if (limiterState.lastStartAt === null) {
 		return;
 	}
-
 	const wait = config.minIntervalMs - (config.now() - limiterState.lastStartAt);
 	if (wait > 0) {
 		await config.sleep(wait);
@@ -72,16 +70,17 @@ const runWithRetry = async <T>(
 	limiterState: LimiterState,
 ): Promise<T> => {
 	for (let attempt = 0; ; attempt += 1) {
+		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御で逐次実行
 		await waitInterval(config, limiterState);
-
 		limiterState.lastStartAt = config.now();
 		try {
+			// oxlint-disable-next-line eslint/no-await-in-loop - レート制御で逐次実行
 			return await task();
 		} catch (error) {
 			if (!(error instanceof RateLimitError) || attempt >= config.maxRetries) {
 				throw error;
 			}
-
+			// oxlint-disable-next-line eslint/no-await-in-loop - レート制御で逐次実行
 			await config.sleep(error.retryAfterMs ?? config.baseBackoffMs * 2 ** attempt);
 		}
 	}

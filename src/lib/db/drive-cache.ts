@@ -67,6 +67,58 @@ export const putCachedFolder = async (record: FolderRecord) => {
 };
 
 /**
+ * ファイルキャッシュを1件取得する
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param fileId - 取得するファイルID
+ * @returns ファイルキャッシュ。存在しなければundefined
+ */
+export const getCachedFile = async (accountId: string, fileId: string) => {
+	const db = await openDatabase();
+	return db.get('files', [accountId, fileId]);
+};
+
+/**
+ * キャッシュ上で複数のファイルを別フォルダへ移動する
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param fileIds - 移動するファイルIDの一覧
+ * @param folderId - 移動先のフォルダID(ルートはnull)
+ */
+export const moveCachedFiles = async (
+	accountId: string,
+	fileIds: string[],
+	folderId: string | null,
+) => {
+	const db = await openDatabase();
+	const tx = db.transaction('files', 'readwrite');
+	const records = await Promise.all(fileIds.map((fileId) => tx.store.get([accountId, fileId])));
+	const updates = records
+		.filter((record) => record !== undefined)
+		.map((record) => tx.store.put({ ...record, folderId, folderKey: folderId ?? '' }));
+	
+	await Promise.all([...updates, tx.done]);
+};
+
+/**
+ * キャッシュ上でフォルダを別の親フォルダへ移動する
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param folderId - 移動するフォルダID
+ * @param parentId - 移動先の親フォルダID(ルートはnull)
+ */
+export const moveCachedFolder = async (
+	accountId: string,
+	folderId: string,
+	parentId: string | null,
+) => {
+	const db = await openDatabase();
+	const record = await db.get('folders', [accountId, folderId]);
+	if (record === undefined) {
+		return;
+	}
+
+	await db.put('folders', { ...record, parentId, parentKey: parentId ?? '' });
+};
+
+/**
  * ファイルキャッシュを1件削除する
  * @param accountId - 対象アカウントのアプリ内ID
  * @param fileId - 削除するファイルID

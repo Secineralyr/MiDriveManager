@@ -1,4 +1,6 @@
+import type { AccountRecord, FileRecord } from '../db/schema';
 import type { ActionsClient, DriveItem, FileMetadata } from '../services/drive-actions';
+import { copyFilesToFolder, moveItems } from '../services/drive-move';
 import {
 	createFolder,
 	deleteItems,
@@ -6,7 +8,6 @@ import {
 	renameFolder,
 	updateFileMetadata,
 } from '../services/drive-actions';
-import type { AccountRecord } from '../db/schema';
 import { createDriveClient } from '../api/client';
 
 /** 基本操作用APIクライアントの生成関数 */
@@ -155,6 +156,50 @@ export const driveActionsStore = {
 	) {
 		return withAction(async () => {
 			await deleteItems(account.id, clientFactory(account.host, account.token), items);
+		});
+	},
+
+	/**
+	 * 複数の項目を指定フォルダへ移動する
+	 * @param account - 対象アカウント
+	 * @param input - 移動する項目と移動先フォルダID
+	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
+	 * @returns 成功したらtrue
+	 */
+	moveItems(
+		account: AccountRecord,
+		input: {
+			/** 移動する項目の一覧 */
+			items: DriveItem[];
+			/** 移動先のフォルダID(ルートはnull) */
+			targetFolderId: string | null;
+		},
+		clientFactory: ActionsClientFactory = createDriveClient,
+	) {
+		return withAction(async () => {
+			await moveItems(account.id, clientFactory(account.host, account.token), input);
+		});
+	},
+
+	/**
+	 * ファイルのURL取り込みで複製を作る(コピー&ペースト用)
+	 * @param account - 複製先のアカウント
+	 * @param input - 複製するファイルと複製先フォルダID
+	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
+	 * @returns 成功したらtrue
+	 */
+	copyFiles(
+		account: AccountRecord,
+		input: {
+			/** 複製するファイルの一覧 */
+			files: FileRecord[];
+			/** 複製先のフォルダID(ルートはnull) */
+			targetFolderId: string | null;
+		},
+		clientFactory: ActionsClientFactory = createDriveClient,
+	) {
+		return withAction(async () => {
+			await copyFilesToFolder(clientFactory(account.host, account.token), input);
 		});
 	},
 };

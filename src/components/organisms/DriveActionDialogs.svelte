@@ -1,42 +1,86 @@
 <script lang="ts">
+	import type { AccountRecord } from '../../lib/db/schema';
 	import ConfirmDialog from '$components/molecules/ConfirmDialog.svelte';
+	import type { DriveItem } from '../../lib/services/drive-actions';
 	import PromptDialog from '$components/molecules/PromptDialog.svelte';
+	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
+	import { driveStore } from '../../lib/stores/drive.svelte';
+	import { selectionStore } from '../../lib/stores/selection.svelte';
 
 	type Props = {
-		/** フォルダ作成ダイアログを表示するかどうか */
+		/** 操作対象のアカウント */
+		account: AccountRecord;
+		/** フォルダ作成ダイアログの表示状態(バインド可能) */
 		createOpen: boolean;
-		/** リネームダイアログを表示するかどうか */
+		/** リネームダイアログの表示状態(バインド可能) */
 		renameOpen: boolean;
+		/** 削除確認ダイアログの表示状態(バインド可能) */
+		deleteOpen: boolean;
+		/** リネーム対象の項目(未選択ならnull) */
+		renameItem: DriveItem | null;
 		/** リネームの初期値(現在の名前) */
 		renameInitial: string;
-		/** 削除確認ダイアログを表示するかどうか */
-		deleteOpen: boolean;
-		/** 削除対象の件数 */
-		deleteCount: number;
-		/** 操作の実行中かどうか */
-		busy: boolean;
-		/** フォルダ作成確定時の処理 */
-		oncreate: (name: string) => void;
-		/** リネーム確定時の処理 */
-		onrename: (name: string) => void;
-		/** 削除確定時の処理 */
-		ondelete: () => void;
-		/** いずれかのダイアログを閉じる操作 */
-		oncanceldialog: () => void;
+		/** 削除対象の項目一覧 */
+		deleteTargets: DriveItem[];
 	};
 
 	let {
-		createOpen,
-		renameOpen,
+		account,
+		createOpen = $bindable(),
+		renameOpen = $bindable(),
+		deleteOpen = $bindable(),
+		renameItem,
 		renameInitial,
-		deleteOpen,
-		deleteCount,
-		busy,
-		oncreate,
-		onrename,
-		ondelete,
-		oncanceldialog,
+		deleteTargets,
 	}: Props = $props();
+
+	/** すべての操作ダイアログを閉じる */
+	const closeAll = () => {
+		createOpen = false;
+		renameOpen = false;
+		deleteOpen = false;
+	};
+
+	/**
+	 * フォルダ作成を確定する(表示中のフォルダ直下に作る)
+	 * @param name - フォルダ名
+	 */
+	const handleCreate = async (name: string) => {
+		const ok = await driveActionsStore.createFolder(account, {
+			name,
+			parentId: driveStore.currentFolderId,
+		});
+		createOpen = false;
+		if (ok) {
+			await driveStore.refresh();
+		}
+	};
+
+	/**
+	 * 名前の変更を確定する
+	 * @param name - 新しい名前
+	 */
+	const handleRename = async (name: string) => {
+		if (renameItem === null) {
+			renameOpen = false;
+			return;
+		}
+		const ok = await driveActionsStore.rename(account, { item: renameItem, name });
+		renameOpen = false;
+		if (ok) {
+			await driveStore.refresh();
+		}
+	};
+
+	/** 削除を確定する */
+	const handleDelete = async () => {
+		const ok = await driveActionsStore.deleteItems(account, deleteTargets);
+		deleteOpen = false;
+		if (ok) {
+			selectionStore.clear();
+		}
+		await driveStore.refresh();
+	};
 </script>
 
 <PromptDialog
@@ -44,9 +88,9 @@
 	title="新しいフォルダ"
 	label="フォルダ名"
 	confirmLabel="作成"
-	{busy}
-	onconfirm={oncreate}
-	oncancel={oncanceldialog}
+	busy={driveActionsStore.busy}
+	onconfirm={handleCreate}
+	oncancel={closeAll}
 />
 
 <PromptDialog
@@ -55,17 +99,17 @@
 	label="新しい名前"
 	initialValue={renameInitial}
 	confirmLabel="変更"
-	{busy}
-	onconfirm={onrename}
-	oncancel={oncanceldialog}
+	busy={driveActionsStore.busy}
+	onconfirm={handleRename}
+	oncancel={closeAll}
 />
 
 <ConfirmDialog
 	open={deleteOpen}
 	title="削除の確認"
-	message="{deleteCount}件の項目を削除します。この操作は取り消せません。サーバー上からも削除されます。"
+	message="{deleteTargets.length}件の項目を削除します。この操作は取り消せません。サーバー上からも削除されます。"
 	confirmLabel="削除"
 	danger
-	onconfirm={ondelete}
-	oncancel={oncanceldialog}
+	onconfirm={handleDelete}
+	oncancel={closeAll}
 />

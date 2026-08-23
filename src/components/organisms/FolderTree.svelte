@@ -10,11 +10,46 @@
 		currentFolderId: string | null;
 		/** フォルダ選択時の処理 */
 		onnavigate: (folderId: string | null) => void;
+		/** フォルダへの項目ドロップ時の処理 */
+		ondropitems?: (folderId: string | null) => void;
 	};
 
-	let { childrenMap, currentFolderId, onnavigate }: Props = $props();
+	let { childrenMap, currentFolderId, onnavigate, ondropitems }: Props = $props();
 
 	let expanded = $state<Record<string, boolean>>({});
+	let rootDropover = $state(false);
+
+	/**
+	 * ルートへのドロップ受け入れを表明して強調する
+	 * @param event - ドラッグイベント
+	 */
+	const handleRootDragOver = (event: DragEvent) => {
+		if (ondropitems === undefined) {
+			return;
+		}
+		event.preventDefault();
+
+		if (event.dataTransfer !== null) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+		
+		rootDropover = true;
+	};
+
+	/** ルートのドロップ強調を解除する */
+	const handleRootDragLeave = () => {
+		rootDropover = false;
+	};
+
+	/**
+	 * ルートへドロップされた項目を受け取る
+	 * @param event - ドラッグイベント
+	 */
+	const handleRootDrop = (event: DragEvent) => {
+		event.preventDefault();
+		rootDropover = false;
+		ondropitems?.(null);
+	};
 
 	const rootChildren = $derived(childrenMap[''] ?? []);
 
@@ -31,7 +66,14 @@
 <nav aria-label="フォルダツリー">
 	<ul>
 		<li>
-			<div data-current={currentFolderId === null}>
+			<div
+				role="group"
+				data-current={currentFolderId === null}
+				data-dropover={rootDropover}
+				ondragover={handleRootDragOver}
+				ondragleave={handleRootDragLeave}
+				ondrop={handleRootDrop}
+			>
 				<span aria-hidden="true">
 					<IconChevronDown size={16} />
 				</span>
@@ -54,6 +96,7 @@
 							{currentFolderId}
 							ontoggle={handleToggle}
 							onselect={onnavigate}
+							{ondropitems}
 						/>
 					{/each}
 				</ul>
@@ -93,6 +136,12 @@
 	}
 
 	div[data-current='true'] {
+		background-color: var(--color-surface-active);
+	}
+
+	div[data-dropover='true'] {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
 		background-color: var(--color-surface-active);
 	}
 

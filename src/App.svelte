@@ -4,7 +4,9 @@
 	import AppHeader from '$components/organisms/AppHeader.svelte';
 	import DrivePage from '$components/pages/DrivePage.svelte';
 	import Spinner from '$components/atoms/Spinner.svelte';
+	import ToastStack from '$components/organisms/ToastStack.svelte';
 	import { accountsStore } from './lib/stores/accounts.svelte';
+	import { forwardDriveErrorsToToast } from './lib/stores/drive-error-toast';
 	import { onMount } from 'svelte';
 	import { syncStore } from './lib/stores/sync.svelte';
 
@@ -141,6 +143,10 @@
 			syncStore.run(activeAccount);
 		}
 	});
+
+	$effect(() => {
+		forwardDriveErrorsToToast();
+	});
 </script>
 
 {#if screen === 'loading'}
@@ -168,6 +174,8 @@
 	/>
 	<DrivePage account={activeAccount} />
 {/if}
+
+<ToastStack />
 
 <style>
 	section {

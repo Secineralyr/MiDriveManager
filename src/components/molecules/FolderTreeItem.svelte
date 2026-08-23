@@ -18,16 +18,60 @@
 		ontoggle: (folderId: string) => void;
 		/** フォルダ選択時の処理 */
 		onselect: (folderId: string) => void;
+		/** このフォルダへの項目ドロップ時の処理 */
+		ondropitems?: (folderId: string) => void;
 	};
 
-	let { folder, childrenMap, expanded, currentFolderId, ontoggle, onselect }: Props = $props();
+	let { folder, childrenMap, expanded, currentFolderId, ontoggle, onselect, ondropitems }: Props =
+		$props();
+
+	let dropover = $state(false);
+
+	/**
+	 * ドロップの受け入れを表明して強調する
+	 * @param event - ドラッグイベント
+	 */
+	const handleDragOver = (event: DragEvent) => {
+		if (ondropitems === undefined) {
+			return;
+		}
+		event.preventDefault();
+
+		if (event.dataTransfer !== null) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+
+		dropover = true;
+	};
+
+	/** ドロップ対象の強調を解除する */
+	const handleDragLeave = () => {
+		dropover = false;
+	};
+
+	/**
+	 * ドロップされた項目を受け取る
+	 * @param event - ドラッグイベント
+	 */
+	const handleDrop = (event: DragEvent) => {
+		event.preventDefault();
+		dropover = false;
+		ondropitems?.(folder.id);
+	};
 
 	const children = $derived(childrenMap[folder.id] ?? []);
 	const isExpanded = $derived(expanded[folder.id] === true);
 </script>
 
 <li>
-	<div data-current={currentFolderId === folder.id}>
+	<div
+		role="group"
+		data-current={currentFolderId === folder.id}
+		data-dropover={dropover}
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
+	>
 		{#if children.length > 0}
 			<button
 				type="button"
@@ -62,6 +106,7 @@
 					{currentFolderId}
 					{ontoggle}
 					{onselect}
+					{ondropitems}
 				/>
 			{/each}
 		</ul>
@@ -88,6 +133,12 @@
 	}
 
 	div[data-current='true'] {
+		background-color: var(--color-surface-active);
+	}
+
+	div[data-dropover='true'] {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
 		background-color: var(--color-surface-active);
 	}
 

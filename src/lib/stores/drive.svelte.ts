@@ -47,11 +47,13 @@ const state = $state<DriveState>({
 const withLoading = async (task: () => Promise<void>) => {
 	state.loading = true;
 	state.error = null;
+	
 	try {
 		await task();
 	} catch (error) {
 		state.error = error instanceof Error ? error.message : '読み込みに失敗しました';
 	}
+	
 	state.loading = false;
 };
 
@@ -155,6 +157,11 @@ export const driveStore = {
 		return state.error;
 	},
 
+	/** エラーメッセージを消す */
+	clearError() {
+		state.error = null;
+	},
+
 	/**
 	 * アカウントのドライブを開いてルートを表示する
 	 * @param accountId - 表示するアカウントのアプリ内ID
@@ -180,6 +187,7 @@ export const driveStore = {
 		if (accountId === null) {
 			return;
 		}
+		
 		await withLoading(async () => {
 			state.currentFolderId = folderId;
 			state.files = await listFilesInFolder(accountId, folderId);
@@ -195,6 +203,7 @@ export const driveStore = {
 		if (accountId === null) {
 			return;
 		}
+		
 		await withLoading(async () => {
 			state.allFolders = await listAccountFolders(accountId);
 			const current = state.currentFolderId;
@@ -203,6 +212,7 @@ export const driveStore = {
 			if (!exists) {
 				state.currentFolderId = null;
 			}
+			
 			state.files = await listFilesInFolder(accountId, state.currentFolderId);
 		});
 	},
