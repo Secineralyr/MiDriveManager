@@ -1,6 +1,7 @@
 <script lang="ts">
 	import AccountMenu from '$components/organisms/AccountMenu.svelte';
 	import type { AccountRecord } from '../../lib/db/schema';
+	import SearchBox from '$components/molecules/SearchBox.svelte';
 	import SyncIndicator from '$components/molecules/SyncIndicator.svelte';
 
 	type Props = {
@@ -20,17 +21,37 @@
 		onremove: (accountId: string) => void;
 		/** 再同期要求時の処理 */
 		onresync: () => void;
+		/** 検索語 */
+		searchQuery: string;
+		/** 検索語の入力時の処理 */
+		onsearch: (query: string) => void;
+		/** 検索解除時の処理 */
+		onclearsearch: () => void;
 	};
 
-	let { accounts, active, syncStatus, syncCount, onswitch, onadd, onremove, onresync }: Props =
-		$props();
+	let {
+		accounts,
+		active,
+		syncStatus,
+		syncCount,
+		onswitch,
+		onadd,
+		onremove,
+		onresync,
+		searchQuery,
+		onsearch,
+		onclearsearch,
+	}: Props = $props();
 </script>
 
 <header>
 	<div>
 		<div>
-			<img src="/favicon.svg" alt="" />
-			<p>misskeyDriveManager</p>
+			<!-- NOTE: 今後全体メニューを置くときに使う -->
+			<!-- <img src="/favicon.svg" alt="" /> -->
+		</div>
+		<div>
+			<SearchBox value={searchQuery} oninput={onsearch} onclear={onclearsearch} />
 		</div>
 		<div>
 			<SyncIndicator status={syncStatus} count={syncCount} onretry={onresync} />
@@ -57,6 +78,12 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
+	}
+
+	/* 中央の検索ボックス */
+	header > div > div:nth-child(2) {
+		flex: 1;
+		max-width: 480px;
 	}
 
 	img {

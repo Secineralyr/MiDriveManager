@@ -27,6 +27,8 @@
 		ondropfilesinfolder?: (folderId: string, transfer: DataTransfer) => void;
 		/** 項目の右クリックでコンテキストメニューを開く操作 */
 		onopenmenu?: (kind: 'file' | 'folder', id: string, position: { x: number; y: number }) => void;
+		/** 項目がない時の文言 */
+		emptyMessage?: string;
 	};
 
 	let {
@@ -41,6 +43,7 @@
 		ondropinfolder,
 		ondropfilesinfolder,
 		onopenmenu,
+		emptyMessage = 'このフォルダは空です',
 	}: Props = $props();
 
 	/**
@@ -77,7 +80,7 @@
 </script>
 
 {#if folders.length === 0 && files.length === 0}
-	<p>このフォルダは空です</p>
+	<p>{emptyMessage}</p>
 {:else}
 	<ul>
 		{#each folders as folder (folder.id)}

@@ -5,6 +5,7 @@ import type { ShortcutAction } from '../utils/shortcuts';
 import { clipboardStore } from './clipboard.svelte';
 import { driveStore } from './drive.svelte';
 import { driveTasks } from './drive-tasks';
+import { itemName } from './item-name';
 import { resolveShortcut } from '../utils/shortcuts';
 
 /** ショートカット処理がページから受け取る文脈(変化する値は関数で受け取る) */
@@ -83,7 +84,7 @@ const copySelection = (context: ShortcutContext, mode: 'copy' | 'cut') => {
 		clipboardStore.setCut(context.account().id, items);
 	}
 
-	const names = items.map((item) => driveStore.nameOf(item)).filter((name) => name !== undefined);
+	const names = items.map((item) => itemName(item)).filter((name) => name !== undefined);
 	const _ = writeClipboardText(names.join('\n'));
 };
 

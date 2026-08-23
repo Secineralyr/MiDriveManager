@@ -10,6 +10,7 @@
 		parseSelectionKey,
 		selectionStore,
 	} from '../../lib/stores/selection.svelte';
+	import { sortFiles, sortFolders } from '../../lib/utils/drive-sort';
 	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 	import DriveActionDialogs from '$components/organisms/DriveActionDialogs.svelte';
 	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
@@ -20,6 +21,7 @@
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
 	import { driveTasks } from '../../lib/stores/drive-tasks';
+	import { searchStore } from '../../lib/stores/search.svelte';
 	import { syncStore } from '../../lib/stores/sync.svelte';
 
 	type Props = {
@@ -37,9 +39,22 @@
 	let draggedKeys = $state<string[]>([]);
 	let menuPosition = $state<{ x: number; y: number } | null>(null);
 
+	// 検索中は検索結果、それ以外は表示中フォルダの内容を一覧に出す(並び替えは共通)
+	const searchResult = $derived(searchStore.active ? searchStore.result : null);
+	const visibleFolders = $derived(
+		searchResult === null
+			? driveStore.childFolders
+			: sortFolders(searchResult.folders, driveStore.sortKey, driveStore.sortOrder),
+	);
+	const visibleFiles = $derived(
+		searchResult === null
+			? driveStore.files
+			: sortFiles(searchResult.files, driveStore.sortKey, driveStore.sortOrder),
+	);
+
 	const orderedKeys = $derived([
-		...driveStore.childFolders.map((folder) => makeSelectionKey('folder', folder.id)),
-		...driveStore.files.map((file) => makeSelectionKey('file', file.id)),
+		...visibleFolders.map((folder) => makeSelectionKey('folder', folder.id)),
+		...visibleFiles.map((file) => makeSelectionKey('file', file.id)),
 	]);
 
 	const effectiveKeys = $derived(selectionStore.keys.filter((key) => orderedKeys.includes(key)));
@@ -48,13 +63,13 @@
 		const lastKey = effectiveKeys.at(-1);
 		return resolveDetailTarget({
 			last: lastKey === undefined ? null : parseSelectionKey(lastKey),
-			folders: driveStore.childFolders,
-			files: driveStore.files,
+			folders: visibleFolders,
+			files: visibleFiles,
 		});
 	});
 
 	const selectionSize = $derived(
-		driveStore.files
+		visibleFiles
 			.filter((file) => effectiveKeys.includes(makeSelectionKey('file', file.id)))
 			.reduce((sum, file) => sum + file.size, 0),
 	);
@@ -175,11 +190,12 @@
 	};
 
 	/**
-	 * フォルダへ移動する(選択は解除する)
+	 * フォルダへ移動する(選択と検索は解除する)
 	 * @param folderId - 移動先のフォルダID(ルートはnull)
 	 */
 	const handleNavigate = (folderId: string | null) => {
 		selectionStore.clear();
+		searchStore.clear();
 		driveStore.openFolder(folderId);
 	};
 
@@ -198,6 +214,7 @@
 	};
 
 	$effect(() => {
+		searchStore.setAccount(account.id);
 		if (driveStore.accountId !== account.id) {
 			selectionStore.clear();
 			driveStore.openAccount(account.id);
@@ -211,6 +228,7 @@
 			driveStore.accountId === account.id
 		) {
 			driveStore.refresh();
+			searchStore.rerun();
 		}
 	});
 
@@ -227,8 +245,8 @@
 	childrenMap={driveStore.childrenMap}
 	currentFolderId={driveStore.currentFolderId}
 	breadcrumb={driveStore.breadcrumb}
-	folders={driveStore.childFolders}
-	files={driveStore.files}
+	folders={visibleFolders}
+	files={visibleFiles}
 	viewMode={driveStore.viewMode}
 	sortKey={driveStore.sortKey}
 	sortOrder={driveStore.sortOrder}
@@ -273,6 +291,10 @@
 	onuploadfiles={handleUploadFiles}
 	ondownloadselection={downloadSelection}
 	onopenmenu={handleOpenMenu}
+	searchQuery={searchResult === null ? null : searchStore.query}
+	onclearsearch={() => {
+		searchStore.clear();
+	}}
 />
 
 <ContextMenu

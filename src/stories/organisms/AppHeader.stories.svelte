@@ -32,6 +32,9 @@
 		onadd: () => {},
 		onremove: () => {},
 		onresync: () => {},
+		searchQuery: '',
+		onsearch: () => {},
+		onclearsearch: () => {},
 	}}
 />
 
@@ -46,6 +49,9 @@
 		onadd: () => {},
 		onremove: () => {},
 		onresync: () => {},
+		searchQuery: '',
+		onsearch: () => {},
+		onclearsearch: () => {},
 	}}
 />
 
@@ -60,5 +66,25 @@
 		onadd: () => {},
 		onremove: () => {},
 		onresync: () => {},
+		searchQuery: '',
+		onsearch: () => {},
+		onclearsearch: () => {},
+	}}
+/>
+
+<Story
+	name="検索中"
+	args={{
+		accounts: [primaryAccount],
+		active: primaryAccount,
+		syncStatus: 'idle',
+		syncCount: 0,
+		onswitch: () => {},
+		onadd: () => {},
+		onremove: () => {},
+		onresync: () => {},
+		searchQuery: 'がぞー',
+		onsearch: () => {},
+		onclearsearch: () => {},
 	}}
 />

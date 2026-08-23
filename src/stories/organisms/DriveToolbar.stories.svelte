@@ -49,3 +49,18 @@
 		onuploadfiles: () => {},
 	}}
 />
+
+<Story
+	name="検索結果"
+	args={{
+		breadcrumb,
+		viewMode: 'list',
+		onnavigate: () => {},
+		onviewmode: () => {},
+		oncreatefolder: () => {},
+		onuploadfiles: () => {},
+		searchQuery: 'がぞー',
+		resultCount: 3,
+		onclearsearch: () => {},
+	}}
+/>

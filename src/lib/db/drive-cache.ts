@@ -38,6 +38,16 @@ export const listAccountFolders = async (accountId: string) => {
 };
 
 /**
+ * 指定アカウントの全ファイルキャッシュを取得する(検索用)
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @returns ファイルキャッシュの配列
+ */
+export const listAccountFiles = async (accountId: string) => {
+	const db = await openDatabase();
+	return db.getAll('files', accountKeyRange(accountId));
+};
+
+/**
  * 指定フォルダ直下のファイルキャッシュを取得する
  * @param accountId - 対象アカウントのアプリ内ID
  * @param folderId - フォルダID(ルート直下はnull)

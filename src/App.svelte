@@ -9,6 +9,7 @@
 	import { accountsStore } from './lib/stores/accounts.svelte';
 	import { forwardDriveErrorsToToast } from './lib/stores/drive-error-toast';
 	import { onMount } from 'svelte';
+	import { searchStore } from './lib/stores/search.svelte';
 	import { syncStore } from './lib/stores/sync.svelte';
 
 	/** 表示する画面の種類 */
@@ -189,6 +190,13 @@
 		onadd={handleAdd}
 		onremove={handleRemove}
 		onresync={handleResync}
+		searchQuery={searchStore.query}
+		onsearch={(query) => {
+			searchStore.setQuery(query);
+		}}
+		onclearsearch={() => {
+			searchStore.clear();
+		}}
 	/>
 	<DrivePage account={activeAccount} />
 {/if}

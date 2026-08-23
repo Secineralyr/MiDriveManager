@@ -1,7 +1,7 @@
 import type { DriveItem } from '../services/drive-actions';
 import type { UploadEntry } from '../services/upload';
 import { defaultZipName } from '../services/download';
-import { driveStore } from './drive.svelte';
+import { itemName } from './item-name';
 import { toastStore } from './toast.svelte';
 
 /**
@@ -25,7 +25,7 @@ export const uploadLabel = (entries: UploadEntry[]) => {
  */
 export const downloadLabel = (items: DriveItem[]) => {
 	const [first] = items;
-	const name = items.length === 1 && first !== undefined ? driveStore.nameOf(first) : undefined;
+	const name = items.length === 1 && first !== undefined ? itemName(first) : undefined;
 	return name === undefined ? `${items.length}件のダウンロード` : `${name}をダウンロード`;
 };
 
@@ -36,8 +36,7 @@ export const downloadLabel = (items: DriveItem[]) => {
  */
 export const zipNameFor = (items: DriveItem[]) => {
 	const [first] = items;
-	const folderName =
-		items.length === 1 && first?.kind === 'folder' ? driveStore.nameOf(first) : undefined;
+	const folderName = items.length === 1 && first?.kind === 'folder' ? itemName(first) : undefined;
 	return folderName ?? defaultZipName(new Date());
 };
 

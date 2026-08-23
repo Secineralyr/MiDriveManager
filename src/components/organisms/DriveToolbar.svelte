@@ -6,6 +6,7 @@
 	import IconLayoutGrid from '@tabler/icons-svelte/icons/layout-grid';
 	import IconList from '@tabler/icons-svelte/icons/list';
 	import IconUpload from '@tabler/icons-svelte/icons/upload';
+	import IconX from '@tabler/icons-svelte/icons/x';
 	import type { ViewMode } from '../../lib/db/settings';
 
 	type Props = {
@@ -21,10 +22,25 @@
 		oncreatefolder: () => void;
 		/** ファイル選択ダイアログでファイルが選ばれた時の処理 */
 		onuploadfiles: (files: File[]) => void;
+		/** 検索中の検索語(検索していない時はnull。検索中はパンくずの代わりに結果の見出しを出す) */
+		searchQuery?: string | null;
+		/** 検索結果の件数 */
+		resultCount?: number;
+		/** 検索解除時の処理 */
+		onclearsearch?: () => void;
 	};
 
-	let { breadcrumb, viewMode, onnavigate, onviewmode, oncreatefolder, onuploadfiles }: Props =
-		$props();
+	let {
+		breadcrumb,
+		viewMode,
+		onnavigate,
+		onviewmode,
+		oncreatefolder,
+		onuploadfiles,
+		searchQuery = null,
+		resultCount = 0,
+		onclearsearch,
+	}: Props = $props();
 
 	let fileInput = $state<HTMLInputElement | null>(null);
 
@@ -53,15 +69,26 @@
 </script>
 
 <div>
-	<Breadcrumbs items={breadcrumbItems} {onnavigate} />
+	{#if searchQuery === null}
+		<Breadcrumbs items={breadcrumbItems} {onnavigate} />
+	{:else}
+		<p>
+			<span>「{searchQuery}」の検索結果: {resultCount}件</span>
+			<IconButton label="検索を解除" onclick={onclearsearch}>
+				<IconX size={16} />
+			</IconButton>
+		</p>
+	{/if}
 	<div>
 		<input type="file" multiple hidden bind:this={fileInput} onchange={handleFilesChosen} />
-		<IconButton label="アップロード" onclick={openFilePicker}>
-			<IconUpload size={18} />
-		</IconButton>
-		<IconButton label="新しいフォルダ" onclick={oncreatefolder}>
-			<IconFolderPlus size={18} />
-		</IconButton>
+		{#if searchQuery === null}
+			<IconButton label="アップロード" onclick={openFilePicker}>
+				<IconUpload size={18} />
+			</IconButton>
+			<IconButton label="新しいフォルダ" onclick={oncreatefolder}>
+				<IconFolderPlus size={18} />
+			</IconButton>
+		{/if}
 		<IconButton
 			label="リスト表示"
 			active={viewMode === 'list'}
@@ -94,5 +121,21 @@
 	div > div {
 		display: flex;
 		gap: 5px;
+	}
+
+	p {
+		display: flex;
+		align-items: center;
+		margin: 0;
+		gap: 5px;
+		font-size: 1.15rem;
+		font-weight: 700;
+		min-width: 0;
+	}
+
+	p > span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 </style>

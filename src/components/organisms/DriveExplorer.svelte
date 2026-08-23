@@ -80,6 +80,10 @@
 		ondownloadselection: () => void;
 		/** 項目の右クリックでコンテキストメニューを開く操作 */
 		onopenmenu: (kind: 'file' | 'folder', id: string, position: { x: number; y: number }) => void;
+		/** 検索中の検索語(検索していない時はnull。検索中はfolders/filesが検索結果になる) */
+		searchQuery: string | null;
+		/** 検索解除時の処理 */
+		onclearsearch: () => void;
 	};
 
 	let {
@@ -114,7 +118,14 @@
 		onuploadfiles,
 		ondownloadselection,
 		onopenmenu,
+		searchQuery,
+		onclearsearch,
 	}: Props = $props();
+
+	/** 項目がない時の文言(検索中は結果なしの文言にする) */
+	const emptyMessage = $derived(
+		searchQuery === null ? 'このフォルダは空です' : '一致する項目はありません',
+	);
 
 	/** 一覧領域内でOSファイルをドラッグしている深さ(子要素の出入りで増減するため数で持つ) */
 	let fileDragDepth = $state(0);
@@ -141,10 +152,11 @@
 
 	/**
 	 * 一覧領域はOSファイルのドロップだけを受け入れる(フォルダ行などが先に受け取った場合はここへ来ない)
+	 * 検索結果の表示中はドロップ先のフォルダが定まらないため受け入れない
 	 * @param event - ドラッグイベント
 	 */
 	const handleAreaDragOver = (event: DragEvent) => {
-		acceptDragOver(event, { items: false, files: true });
+		acceptDragOver(event, { items: false, files: searchQuery === null });
 	};
 
 	/**
@@ -184,6 +196,9 @@
 			{onviewmode}
 			{oncreatefolder}
 			{onuploadfiles}
+			{searchQuery}
+			resultCount={folders.length + files.length}
+			{onclearsearch}
 		/>
 		{#if selectedKeys.length > 0}
 			<SelectionBar
@@ -209,6 +224,7 @@
 				ondropinfolder={ondropitems}
 				ondropfilesinfolder={ondropfiles}
 				{onopenmenu}
+				{emptyMessage}
 			/>
 		{:else}
 			<FileGrid
@@ -223,6 +239,7 @@
 				ondropinfolder={ondropitems}
 				ondropfilesinfolder={ondropfiles}
 				{onopenmenu}
+				{emptyMessage}
 			/>
 		{/if}
 	</main>

@@ -106,6 +106,8 @@
 		onuploadfiles: () => {},
 		ondownloadselection: () => {},
 		onopenmenu: () => {},
+		searchQuery: null,
+		onclearsearch: () => {},
 	};
 
 	const { Story } = defineMeta({
@@ -139,6 +141,33 @@
 		detailsOpen: true,
 		selectionSize: sampleImage.size,
 	}}
+>
+	{#snippet template(args)}
+		<div style="display: flex; height: 480px;">
+			<DriveExplorer {...args} />
+		</div>
+	{/snippet}
+</Story>
+
+<Story
+	name="検索結果"
+	args={{
+		...baseArgs,
+		searchQuery: 'がぞー',
+		folders: [],
+		files: [sampleImage],
+	}}
+>
+	{#snippet template(args)}
+		<div style="display: flex; height: 480px;">
+			<DriveExplorer {...args} />
+		</div>
+	{/snippet}
+</Story>
+
+<Story
+	name="検索結果なし"
+	args={{ ...baseArgs, searchQuery: '存在しない', folders: [], files: [] }}
 >
 	{#snippet template(args)}
 		<div style="display: flex; height: 480px;">
