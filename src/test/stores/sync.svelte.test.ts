@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountRecord } from '../../lib/db/schema';
 import type { SyncClient } from '../../lib/services/sync';
+import SyncEffectRunner from '../fixtures/SyncEffectRunner.svelte';
 import { closeDatabase } from '../../lib/db/database';
+import { render } from '@testing-library/svelte';
 import { stubIndexedDb } from '../indexeddb-test-util';
 import { syncStore } from '../../lib/stores/sync.svelte';
 
@@ -100,5 +102,46 @@ describe('多重実行の制御', () => {
 			expect(syncStore.status).toBe('idle');
 		});
 		expect(syncStore.accountId).toBe('a2');
+	});
+});
+
+/**
+ * 同期が完了(idle)するまで待つ
+ */
+const waitForIdle = async () => {
+	for (let attempt = 0; attempt < 50 && syncStore.status === 'syncing'; attempt += 1) {
+		// oxlint-disable-next-line eslint/no-await-in-loop - 完了を待つポーリング
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, 10);
+		});
+	}
+};
+
+describe('$effectからの同期開始', () => {
+	beforeEach(resetDb);
+
+	it('同期の完了でeffectが再実行されず、APIの呼び出しは1回で止まる', async () => {
+		const calls = { effect: 0, stream: 0 };
+		const client: SyncClient = {
+			driveFolders: () => Promise.resolve([]),
+			driveStream: () => {
+				calls.stream += 1;
+				return Promise.resolve([]);
+			},
+		};
+		render(SyncEffectRunner, {
+			props: {
+				account: makeAccount('effect'),
+				clientFactory: () => client,
+				oneffect: () => {
+					calls.effect += 1;
+				},
+			},
+		});
+
+		await waitForIdle();
+		await waitForIdle();
+		expect(syncStore.status).toBe('idle');
+		expect(calls).toStrictEqual({ effect: 1, stream: 1 });
 	});
 });

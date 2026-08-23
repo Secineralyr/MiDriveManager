@@ -2,6 +2,7 @@ import type { AccountRecord } from '../db/schema';
 import type { SyncClient } from '../services/sync';
 import { createDriveClient } from '../api/client';
 import { syncDrive } from '../services/sync';
+import { untrack } from 'svelte';
 
 /** 同期用APIクライアントの生成関数 */
 type SyncClientFactory = (host: string, token: string) => SyncClient;
@@ -111,17 +112,21 @@ export const syncStore = {
 	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
 	 */
 	run(account: AccountRecord, clientFactory: SyncClientFactory = createDriveClient) {
-		if (state.status === 'syncing' && state.accountId === account.id) {
-			return;
-		}
+		// $effectから呼ばれた時に同期状態への依存を作らない
+		// (依存ができると、同期完了でstatusが変わるたびにeffectが再実行されて同期を繰り返してしまう)
+		untrack(() => {
+			if (state.status === 'syncing' && state.accountId === account.id) {
+				return;
+			}
 
-		runToken += 1;
-		state.status = 'syncing';
-		state.accountId = account.id;
-		state.folderCount = 0;
-		state.fileCount = 0;
-		state.error = null;
+			runToken += 1;
+			state.status = 'syncing';
+			state.accountId = account.id;
+			state.folderCount = 0;
+			state.fileCount = 0;
+			state.error = null;
 
-		const _ = syncInBackground(account, clientFactory, runToken);
+			const _ = syncInBackground(account, clientFactory, runToken);
+		});
 	},
 };
