@@ -52,6 +52,21 @@
 		onclosedetails: () => void;
 		/** ファイルのプレビューを開く操作 */
 		onpreviewfile: (file: FileRecord) => void;
+		/** フォルダ作成開始時の処理 */
+		oncreatefolder: () => void;
+		/** 名前の変更を開始する操作 */
+		onrename: () => void;
+		/** メタデータ保存時の処理 */
+		onsavemetadata: (metadata: {
+			/** コメント(代替テキスト)。空欄はnull */
+			comment: string | null;
+			/** センシティブフラグ */
+			isSensitive: boolean;
+		}) => void;
+		/** 選択した項目の削除要求時の処理 */
+		ondeleteselection: () => void;
+		/** 操作の実行中かどうか */
+		actionBusy: boolean;
 	};
 
 	let {
@@ -75,6 +90,11 @@
 		onclearselection,
 		onclosedetails,
 		onpreviewfile,
+		oncreatefolder,
+		onrename,
+		onsavemetadata,
+		ondeleteselection,
+		actionBusy,
 	}: Props = $props();
 
 	/**
@@ -91,9 +111,13 @@
 		<FolderTree {childrenMap} {currentFolderId} {onnavigate} />
 	</aside>
 	<main>
-		<DriveToolbar {breadcrumb} {viewMode} {onnavigate} {onviewmode} />
+		<DriveToolbar {breadcrumb} {viewMode} {onnavigate} {onviewmode} {oncreatefolder} />
 		{#if selectedKeys.length > 0}
-			<SelectionBar count={selectedKeys.length} onclear={onclearselection} />
+			<SelectionBar
+				count={selectedKeys.length}
+				ondelete={ondeleteselection}
+				onclear={onclearselection}
+			/>
 		{/if}
 		{#if error !== null}
 			<p role="alert">{error}</p>
@@ -126,8 +150,11 @@
 			target={detailTarget}
 			selectionCount={selectedKeys.length}
 			{selectionSize}
+			{actionBusy}
 			onclose={onclosedetails}
 			onpreview={onpreviewfile}
+			{onrename}
+			{onsavemetadata}
 		/>
 	{/if}
 </div>

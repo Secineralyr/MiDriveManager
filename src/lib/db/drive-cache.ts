@@ -49,6 +49,44 @@ export const listFilesInFolder = async (accountId: string, folderId: string | nu
 };
 
 /**
+ * ファイルキャッシュを1件保存する(同一キーは上書き)
+ * @param record - 保存するファイルキャッシュ
+ */
+export const putCachedFile = async (record: FileRecord) => {
+	const db = await openDatabase();
+	await db.put('files', record);
+};
+
+/**
+ * フォルダキャッシュを1件保存する(同一キーは上書き)
+ * @param record - 保存するフォルダキャッシュ
+ */
+export const putCachedFolder = async (record: FolderRecord) => {
+	const db = await openDatabase();
+	await db.put('folders', record);
+};
+
+/**
+ * ファイルキャッシュを1件削除する
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param fileId - 削除するファイルID
+ */
+export const deleteCachedFile = async (accountId: string, fileId: string) => {
+	const db = await openDatabase();
+	await db.delete('files', [accountId, fileId]);
+};
+
+/**
+ * フォルダキャッシュを1件削除する
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param folderId - 削除するフォルダID
+ */
+export const deleteCachedFolder = async (accountId: string, folderId: string) => {
+	const db = await openDatabase();
+	await db.delete('folders', [accountId, folderId]);
+};
+
+/**
  * 指定アカウントのドライブキャッシュを渡された内容で洗い替える
  * 削除検出のため、既存キャッシュをすべて消してから入れ直す(他アカウントには影響しない)
  * @param accountId - 対象アカウントのアプリ内ID

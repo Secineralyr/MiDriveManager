@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { makeSelectionKey, selectionStore } from '../../lib/stores/selection.svelte';
+import {
+	makeSelectionKey,
+	parseSelectionKey,
+	selectionStore,
+} from '../../lib/stores/selection.svelte';
 
 /** 表示順のキー列(フォルダ2つ+ファイル3つ) */
 const ordered = ['folder:d1', 'folder:d2', 'file:f1', 'file:f2', 'file:f3'];
@@ -18,9 +22,11 @@ describe('単独選択とトグル選択', () => {
 		selectionStore.clear();
 	});
 
-	it('選択キーは種別とIDから作られる', () => {
+	it('選択キーは種別とIDから作られ、分解して元に戻せる', () => {
 		expect(makeSelectionKey('folder', 'd1')).toBe('folder:d1');
 		expect(makeSelectionKey('file', 'f1')).toBe('file:f1');
+		expect(parseSelectionKey('folder:d1')).toStrictEqual({ kind: 'folder', id: 'd1' });
+		expect(parseSelectionKey('file:f1')).toStrictEqual({ kind: 'file', id: 'f1' });
 	});
 
 	it('クリックで1件だけ選択される', () => {

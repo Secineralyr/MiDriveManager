@@ -1,9 +1,15 @@
 <script lang="ts">
 	import type { AccountRecord, FileRecord } from '../../lib/db/schema';
-	import { makeSelectionKey, selectionStore } from '../../lib/stores/selection.svelte';
+	import {
+		makeSelectionKey,
+		parseSelectionKey,
+		selectionStore,
+	} from '../../lib/stores/selection.svelte';
 	import type { DetailTarget } from '$components/organisms/DetailsPanel.svelte';
+	import DriveActionDialogs from '$components/organisms/DriveActionDialogs.svelte';
 	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
 	import PreviewModal from '$components/organisms/PreviewModal.svelte';
+	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
 	import { syncStore } from '../../lib/stores/sync.svelte';
 
@@ -16,6 +22,9 @@
 
 	let previewFile = $state<FileRecord | null>(null);
 	let detailsClosed = $state(false);
+	let createOpen = $state(false);
+	let renameOpen = $state(false);
+	let deleteOpen = $state(false);
 
 	const orderedKeys = $derived([
 		...driveStore.childFolders.map((folder) => makeSelectionKey('folder', folder.id)),
@@ -46,6 +55,92 @@
 			.filter((file) => effectiveKeys.includes(makeSelectionKey('file', file.id)))
 			.reduce((sum, file) => sum + file.size, 0),
 	);
+
+	const renameInitial = $derived.by(() => {
+		if (detailTarget === null) {
+			return '';
+		}
+		return detailTarget.kind === 'file' ? detailTarget.file.name : detailTarget.folder.name;
+	});
+
+	/** すべての操作ダイアログを閉じる */
+	const closeDialogs = () => {
+		createOpen = false;
+		renameOpen = false;
+		deleteOpen = false;
+	};
+
+	/**
+	 * フォルダ作成を確定する
+	 * @param name - フォルダ名
+	 */
+	const handleCreateFolder = async (name: string) => {
+		const ok = await driveActionsStore.createFolder(account, {
+			name,
+			parentId: driveStore.currentFolderId,
+		});
+
+		createOpen = false;
+
+		if (ok) {
+			await driveStore.refresh();
+		}
+	};
+
+	/**
+	 * 名前の変更を確定する
+	 * @param name - 新しい名前
+	 */
+	const handleRename = async (name: string) => {
+		if (detailTarget === null) {
+			renameOpen = false;
+			return;
+		}
+
+		const item: { kind: 'file' | 'folder'; id: string } =
+			detailTarget.kind === 'file'
+				? { kind: 'file', id: detailTarget.file.id }
+				: { kind: 'folder', id: detailTarget.folder.id };
+		const ok = await driveActionsStore.rename(account, { item, name });
+		renameOpen = false;
+		if (ok) {
+			await driveStore.refresh();
+		}
+	};
+
+	/**
+	 * ファイルのメタデータ保存を実行する
+	 * @param metadata - 更新するメタデータ
+	 */
+	const handleSaveMetadata = async (metadata: {
+		/** コメント(代替テキスト)。空欄はnull */
+		comment: string | null;
+		/** センシティブフラグ */
+		isSensitive: boolean;
+	}) => {
+		if (detailTarget?.kind !== 'file') {
+			return;
+		}
+
+		const ok = await driveActionsStore.saveFileMetadata(account, {
+			fileId: detailTarget.file.id,
+			metadata,
+		});
+		if (ok) {
+			await driveStore.refresh();
+		}
+	};
+
+	/** 選択した項目の削除を実行する */
+	const handleDeleteSelection = async () => {
+		const items = effectiveKeys.map((key) => parseSelectionKey(key));
+		const ok = await driveActionsStore.deleteItems(account, items);
+		deleteOpen = false;
+		if (ok) {
+			selectionStore.clear();
+		}
+		await driveStore.refresh();
+	};
 
 	/**
 	 * フォルダへ移動する(選択は解除する)
@@ -103,7 +198,7 @@
 	viewMode={driveStore.viewMode}
 	sortKey={driveStore.sortKey}
 	sortOrder={driveStore.sortOrder}
-	error={driveStore.error}
+	error={driveStore.error ?? driveActionsStore.error}
 	selectedKeys={effectiveKeys}
 	{detailTarget}
 	detailsOpen={effectiveKeys.length > 0 && !detailsClosed}
@@ -125,6 +220,30 @@
 	onpreviewfile={(file) => {
 		previewFile = file;
 	}}
+	oncreatefolder={() => {
+		createOpen = true;
+	}}
+	onrename={() => {
+		renameOpen = true;
+	}}
+	onsavemetadata={handleSaveMetadata}
+	ondeleteselection={() => {
+		deleteOpen = true;
+	}}
+	actionBusy={driveActionsStore.busy}
+/>
+
+<DriveActionDialogs
+	{createOpen}
+	{renameOpen}
+	{renameInitial}
+	{deleteOpen}
+	deleteCount={effectiveKeys.length}
+	busy={driveActionsStore.busy}
+	oncreate={handleCreateFolder}
+	onrename={handleRename}
+	ondelete={handleDeleteSelection}
+	oncanceldialog={closeDialogs}
 />
 
 <PreviewModal

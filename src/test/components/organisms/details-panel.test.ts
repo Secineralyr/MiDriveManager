@@ -40,6 +40,9 @@ const sampleFolder: FolderRecord = {
 const renderPanel = (props: Partial<ComponentProps<typeof DetailsPanel>> = {}) => {
 	const onclose = vi.fn<() => void>();
 	const onpreview = vi.fn<(file: FileRecord) => void>();
+	const onrename = vi.fn<() => void>();
+	const onsavemetadata =
+		vi.fn<(metadata: { comment: string | null; isSensitive: boolean }) => void>();
 	const result = render(DetailsPanel, {
 		// targetプロパティがSvelteのマウントオプションと同名のため、propsキー配下で渡す
 		props: {
@@ -48,20 +51,86 @@ const renderPanel = (props: Partial<ComponentProps<typeof DetailsPanel>> = {}) =
 			selectionSize: 0,
 			onclose,
 			onpreview,
+			onrename,
+			onsavemetadata,
 			...props,
 		},
 	});
-	return { ...result, onclose, onpreview };
+	return { ...result, onclose, onpreview, onrename, onsavemetadata };
 };
 
-describe('詳細パネル', () => {
+/**
+ * ファイルを1件選択した状態でパネルを描画する
+ * @returns 描画結果とコールバックのモック
+ */
+const renderFilePanel = () =>
+	renderPanel({ target: { kind: 'file', file: sampleFile }, selectionCount: 1 });
+
+describe('詳細パネルの表示', () => {
 	it('ファイル選択時はメタデータが表示される', () => {
 		renderPanel({ target: { kind: 'file', file: sampleFile }, selectionCount: 1 });
 		expect(screen.queryByText('がぞー.jpg')).not.toBeNull();
 		expect(screen.queryByText('image/jpeg')).not.toBeNull();
 		expect(screen.queryByText('1.5 MB')).not.toBeNull();
-		expect(screen.queryByText('旅行で撮った写真')).not.toBeNull();
-		expect(screen.queryByText('いいえ')).not.toBeNull();
+		expect(screen.getByLabelText<HTMLTextAreaElement>('コメント(代替テキスト)').value).toBe(
+			'旅行で撮った写真',
+		);
+		expect(screen.getByLabelText<HTMLInputElement>('センシティブ').checked).toBe(false);
+	});
+});
+
+describe('詳細パネルの操作', () => {
+	it('閉じるボタンでoncloseが呼ばれる', async () => {
+		const { onclose } = renderPanel();
+		await fireEvent.click(screen.getByRole('button', { name: '詳細を閉じる' }));
+		expect(onclose).toHaveBeenCalledWith();
+	});
+
+	it('名前変更ボタンでonrenameが呼ばれる', async () => {
+		const { onrename } = renderFilePanel();
+		await fireEvent.click(screen.getByRole('button', { name: '名前を変更' }));
+		expect(onrename).toHaveBeenCalledWith();
+	});
+});
+
+describe('メタデータの編集', () => {
+	it('変更がない場合は保存ボタンが非活性になる', () => {
+		renderFilePanel();
+		const button = screen.getByRole('button', { name: 'メタデータを保存' });
+		expect(button.hasAttribute('disabled')).toBe(true);
+	});
+
+	it('編集すると保存ボタンが活性になる', async () => {
+		renderFilePanel();
+		await fireEvent.input(screen.getByLabelText('コメント(代替テキスト)'), {
+			target: { value: '別のコメント' },
+		});
+		const button = screen.getByRole('button', { name: 'メタデータを保存' });
+		expect(button.hasAttribute('disabled')).toBe(false);
+	});
+});
+
+describe('メタデータの保存', () => {
+	it('編集したメタデータが保存時に渡される', async () => {
+		const { onsavemetadata } = renderFilePanel();
+		await fireEvent.input(screen.getByLabelText('コメント(代替テキスト)'), {
+			target: { value: '新しいコメント' },
+		});
+		await fireEvent.click(screen.getByLabelText('センシティブ'));
+		await fireEvent.click(screen.getByRole('button', { name: 'メタデータを保存' }));
+		expect(onsavemetadata).toHaveBeenCalledWith({
+			comment: '新しいコメント',
+			isSensitive: true,
+		});
+	});
+
+	it('コメントを空にして保存するとnullで渡される', async () => {
+		const { onsavemetadata } = renderFilePanel();
+		await fireEvent.input(screen.getByLabelText('コメント(代替テキスト)'), {
+			target: { value: '   ' },
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'メタデータを保存' }));
+		expect(onsavemetadata).toHaveBeenCalledWith({ comment: null, isSensitive: false });
 	});
 
 	it('フォルダ選択時は種類がフォルダと表示される', () => {
@@ -84,11 +153,5 @@ describe('詳細パネル', () => {
 	it('未選択時は案内文が表示される', () => {
 		renderPanel();
 		expect(screen.queryByText('項目を選択すると詳細が表示されます')).not.toBeNull();
-	});
-
-	it('閉じるボタンでoncloseが呼ばれる', async () => {
-		const { onclose } = renderPanel();
-		await fireEvent.click(screen.getByRole('button', { name: '詳細を閉じる' }));
-		expect(onclose).toHaveBeenCalledWith();
 	});
 });

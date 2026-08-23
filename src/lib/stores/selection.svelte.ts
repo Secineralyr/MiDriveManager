@@ -60,6 +60,16 @@ export type SelectModifiers = SelectModifiersShape;
  */
 export const makeSelectionKey = (kind: 'file' | 'folder', id: string) => `${kind}:${id}`;
 
+/**
+ * 選択キーを種別とIDへ分解する
+ * @param key - 選択キー
+ * @returns 種別とID
+ */
+export const parseSelectionKey = (key: string): { kind: 'file' | 'folder'; id: string } =>
+	key.startsWith('folder:')
+		? { kind: 'folder', id: key.slice('folder:'.length) }
+		: { kind: 'file', id: key.slice('file:'.length) };
+
 /** ファイル一覧の選択状態を管理するストア */
 export const selectionStore = {
 	/**

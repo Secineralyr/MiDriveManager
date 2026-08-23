@@ -28,10 +28,22 @@
 
 <Story
 	name="リスト表示"
-	args={{ breadcrumb, viewMode: 'list', onnavigate: () => {}, onviewmode: () => {} }}
+	args={{
+		breadcrumb,
+		viewMode: 'list',
+		onnavigate: () => {},
+		onviewmode: () => {},
+		oncreatefolder: () => {},
+	}}
 />
 
 <Story
 	name="グリッド表示"
-	args={{ breadcrumb, viewMode: 'grid', onnavigate: () => {}, onviewmode: () => {} }}
+	args={{
+		breadcrumb,
+		viewMode: 'grid',
+		onnavigate: () => {},
+		onviewmode: () => {},
+		oncreatefolder: () => {},
+	}}
 />

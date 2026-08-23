@@ -19,9 +19,13 @@
 
 <script lang="ts">
 	import { formatDateTime, formatFileSize } from '../../lib/utils/format';
+	import Button from '$components/atoms/Button.svelte';
+	import Checkbox from '$components/atoms/Checkbox.svelte';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import IconButton from '$components/atoms/IconButton.svelte';
+	import IconPencil from '@tabler/icons-svelte/icons/pencil';
 	import IconX from '@tabler/icons-svelte/icons/x';
+	import TextArea from '$components/atoms/TextArea.svelte';
 
 	type Props = {
 		/** 表示対象(選択なしならnull) */
@@ -30,13 +34,64 @@
 		selectionCount: number;
 		/** 選択中ファイルの合計サイズ */
 		selectionSize: number;
+		/** 操作の実行中かどうか */
+		actionBusy?: boolean;
 		/** パネルを閉じる操作 */
 		onclose: () => void;
 		/** ファイルのプレビューを開く操作 */
 		onpreview: (file: FileRecord) => void;
+		/** 名前の変更を開始する操作 */
+		onrename: () => void;
+		/** メタデータ保存時の処理 */
+		onsavemetadata: (metadata: {
+			/** コメント(代替テキスト)。空欄はnull */
+			comment: string | null;
+			/** センシティブフラグ */
+			isSensitive: boolean;
+		}) => void;
 	};
 
-	let { target, selectionCount, selectionSize, onclose, onpreview }: Props = $props();
+	let {
+		target,
+		selectionCount,
+		selectionSize,
+		actionBusy = false,
+		onclose,
+		onpreview,
+		onrename,
+		onsavemetadata,
+	}: Props = $props();
+
+	let commentDraft = $state('');
+	let sensitiveDraft = $state(false);
+
+	$effect(() => {
+		if (target?.kind === 'file') {
+			commentDraft = target.file.comment ?? '';
+			sensitiveDraft = target.file.isSensitive;
+		}
+	});
+
+	const normalizedComment = $derived.by(() => {
+		const trimmed = commentDraft.trim();
+		return trimmed === '' ? null : trimmed;
+	});
+
+	const metadataDirty = $derived.by(() => {
+		if (target?.kind !== 'file') {
+			return false;
+		}
+
+		return (
+			normalizedComment !== target.file.comment ||
+			sensitiveDraft !== target.file.isSensitive
+		);
+	});
+
+	/** 編集中のメタデータを保存する */
+	const handleSave = () => {
+		onsavemetadata({ comment: normalizedComment, isSensitive: sensitiveDraft });
+	};
 </script>
 
 <section aria-label="詳細">
@@ -70,7 +125,12 @@
 				<FileTypeIcon mimeType={target.file.type} size={40} />
 			</span>
 		{/if}
-		<h3>{target.file.name}</h3>
+		<div>
+			<h3>{target.file.name}</h3>
+			<IconButton label="名前を変更" onclick={onrename}>
+				<IconPencil size={16} />
+			</IconButton>
+		</div>
 		<dl>
 			<dt>種類</dt>
 			<dd>{target.file.type}</dd>
@@ -78,18 +138,24 @@
 			<dd>{formatFileSize(target.file.size)}</dd>
 			<dt>追加日</dt>
 			<dd>{formatDateTime(target.file.createdAt)}</dd>
-			<dt>コメント</dt>
-			<dd>{target.file.comment ?? 'なし'}</dd>
-			<dt>センシティブ</dt>
-			<dd>{target.file.isSensitive ? 'はい' : 'いいえ'}</dd>
 			<dt>URL</dt>
 			<dd><a href={target.file.url} target="_blank" rel="noopener noreferrer">開く</a></dd>
 		</dl>
+		<TextArea label="コメント(代替テキスト)" bind:value={commentDraft} />
+		<Checkbox label="センシティブ" bind:checked={sensitiveDraft} />
+		<Button variant="tonal" disabled={actionBusy || !metadataDirty} onclick={handleSave}>
+			メタデータを保存
+		</Button>
 	{:else if target?.kind === 'folder'}
 		<span>
 			<FileTypeIcon folder size={40} />
 		</span>
-		<h3>{target.folder.name}</h3>
+		<div>
+			<h3>{target.folder.name}</h3>
+			<IconButton label="名前を変更" onclick={onrename}>
+				<IconPencil size={16} />
+			</IconButton>
+		</div>
 		<dl>
 			<dt>種類</dt>
 			<dd>フォルダ</dd>
@@ -122,6 +188,13 @@
 	h2 {
 		margin: 0;
 		font-size: 1.15rem;
+	}
+
+	div {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 5px;
 	}
 
 	h3 {

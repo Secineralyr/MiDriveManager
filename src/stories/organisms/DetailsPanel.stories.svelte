@@ -45,6 +45,8 @@
 		selectionSize: sampleFile.size,
 		onclose: () => {},
 		onpreview: () => {},
+		onrename: () => {},
+		onsavemetadata: () => {},
 	}}
 />
 
@@ -56,6 +58,8 @@
 		selectionSize: 0,
 		onclose: () => {},
 		onpreview: () => {},
+		onrename: () => {},
+		onsavemetadata: () => {},
 	}}
 />
 
@@ -67,6 +71,8 @@
 		selectionSize: 12_500_000,
 		onclose: () => {},
 		onpreview: () => {},
+		onrename: () => {},
+		onsavemetadata: () => {},
 	}}
 />
 
@@ -78,5 +84,7 @@
 		selectionSize: 0,
 		onclose: () => {},
 		onpreview: () => {},
+		onrename: () => {},
+		onsavemetadata: () => {},
 	}}
 />
