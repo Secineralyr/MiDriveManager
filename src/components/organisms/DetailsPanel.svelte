@@ -94,7 +94,7 @@
 	};
 </script>
 
-<section aria-label="詳細">
+<section aria-label="詳細" data-tour="details">
 	<header>
 		<h2>詳細</h2>
 		<IconButton label="詳細を閉じる" onclick={onclose}>

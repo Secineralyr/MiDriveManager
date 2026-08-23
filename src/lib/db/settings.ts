@@ -56,3 +56,19 @@ export const setNoticeAccepted = async () => {
 	const db = await openDatabase();
 	await db.put('settings', true, 'noticeAccepted');
 };
+
+/**
+ * チュートリアルを見終わった(またはスキップした)かどうかを取得する
+ * @returns 見終わっていればtrue。未設定ならfalse
+ */
+export const getTutorialSeen = async () => {
+	const db = await openDatabase();
+	const value = await db.get('settings', 'tutorialSeen');
+	return value === true;
+};
+
+/** チュートリアルを見終わった(またはスキップした)ことを保存する */
+export const setTutorialSeen = async () => {
+	const db = await openDatabase();
+	await db.put('settings', true, 'tutorialSeen');
+};

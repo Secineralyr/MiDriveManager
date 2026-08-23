@@ -44,7 +44,7 @@
 	};
 </script>
 
-<form role="search" onsubmit={handleSubmit}>
+<form role="search" data-tour="search" onsubmit={handleSubmit}>
 	<span aria-hidden="true">
 		<IconSearch size={18} />
 	</span>

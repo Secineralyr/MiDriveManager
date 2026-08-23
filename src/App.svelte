@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { completeMiauth, startMiauthSession, takePendingMiauth } from './lib/auth/miauth';
-	import { getNoticeAccepted, setNoticeAccepted } from './lib/db/settings';
+	import {
+		getNoticeAccepted,
+		getTutorialSeen,
+		setNoticeAccepted,
+		setTutorialSeen,
+	} from './lib/db/settings';
 	import AccountWizard from '$components/organisms/AccountWizard.svelte';
 	import AppHeader from '$components/organisms/AppHeader.svelte';
 	import AppOverlays from '$components/organisms/AppOverlays.svelte';
 	import DrivePage from '$components/pages/DrivePage.svelte';
 	import Spinner from '$components/atoms/Spinner.svelte';
+	import TutorialTour from '$components/organisms/TutorialTour.svelte';
 	import { accountsStore } from './lib/stores/accounts.svelte';
 	import { forwardDriveErrorsToToast } from './lib/stores/drive-error-toast';
 	import { onMount } from 'svelte';
@@ -19,6 +25,8 @@
 	let wizardBusy = $state(false);
 	let wizardError = $state<string | null>(null);
 	let noticeAccepted = $state(false);
+	let tutorialSeen = $state(true);
+	let tutorialOpen = $state(false);
 
 	const activeAccount = $derived(accountsStore.active);
 
@@ -60,10 +68,16 @@
 		wizardBusy = false;
 	};
 
+	/** 諸注意への同意とチュートリアル表示済みの状態を読み込む */
+	const loadPreferences = async () => {
+		noticeAccepted = await getNoticeAccepted();
+		tutorialSeen = await getTutorialSeen();
+	};
+
 	/** アカウント読み込みとMiAuthコールバック処理を行うアプリ初期化 */
 	const initialize = async () => {
 		try {
-			noticeAccepted = await getNoticeAccepted();
+			await loadPreferences();
 			await accountsStore.load();
 			const session = new URLSearchParams(location.search).get('session');
 			if (session !== null) {
@@ -146,6 +160,23 @@
 		}
 	};
 
+	/**
+	 * チュートリアルを閉じる(初回はもう自動表示しないことを保存する)
+	 */
+	const handleCloseTutorial = async () => {
+		tutorialOpen = false;
+		if (tutorialSeen) {
+			return;
+		}
+
+		tutorialSeen = true;
+		try {
+			await setTutorialSeen();
+		} catch (error) {
+			reportUnexpectedError(error);
+		}
+	};
+
 	/** アクティブアカウントの同期を開始する */
 	const handleResync = () => {
 		if (activeAccount !== null) {
@@ -163,6 +194,13 @@
 
 	$effect(() => {
 		forwardDriveErrorsToToast();
+	});
+
+	$effect(() => {
+		// 初回のアカウント追加が終わってメイン画面に入ったら、チュートリアルを自動で開始する
+		if (screen === 'main' && activeAccount !== null && noticeAccepted && !tutorialSeen) {
+			tutorialOpen = true;
+		}
 	});
 </script>
 
@@ -197,11 +235,21 @@
 		onclearsearch={() => {
 			searchStore.clear();
 		}}
+		onshowtutorial={() => {
+			tutorialOpen = true;
+		}}
 	/>
 	<DrivePage account={activeAccount} />
 {/if}
 
 <AppOverlays />
+
+<TutorialTour
+	open={tutorialOpen}
+	onclose={() => {
+		const _ = handleCloseTutorial();
+	}}
+/>
 
 <style>
 	section {

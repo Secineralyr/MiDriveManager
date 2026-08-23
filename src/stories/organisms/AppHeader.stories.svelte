@@ -35,6 +35,7 @@
 		searchQuery: '',
 		onsearch: () => {},
 		onclearsearch: () => {},
+		onshowtutorial: () => {},
 	}}
 />
 
@@ -52,6 +53,7 @@
 		searchQuery: '',
 		onsearch: () => {},
 		onclearsearch: () => {},
+		onshowtutorial: () => {},
 	}}
 />
 
@@ -69,6 +71,7 @@
 		searchQuery: '',
 		onsearch: () => {},
 		onclearsearch: () => {},
+		onshowtutorial: () => {},
 	}}
 />
 
@@ -86,5 +89,6 @@
 		searchQuery: 'がぞー',
 		onsearch: () => {},
 		onclearsearch: () => {},
+		onshowtutorial: () => {},
 	}}
 />

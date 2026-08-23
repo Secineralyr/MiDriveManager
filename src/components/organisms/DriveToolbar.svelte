@@ -68,7 +68,7 @@
 	]);
 </script>
 
-<div>
+<div data-tour="toolbar">
 	{#if searchQuery === null}
 		<Breadcrumbs items={breadcrumbItems} {onnavigate} />
 	{:else}

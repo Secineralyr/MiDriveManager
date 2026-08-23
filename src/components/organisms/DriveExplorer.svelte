@@ -178,10 +178,11 @@
 </script>
 
 <div class="workspace">
-	<aside>
+	<aside data-tour="tree">
 		<FolderTree {childrenMap} {currentFolderId} {onnavigate} {ondropitems} {ondropfiles} />
 	</aside>
 	<main
+		data-tour="list"
 		data-dropover={fileDragDepth > 0}
 		ondragenter={handleAreaDragEnter}
 		ondragleave={handleAreaDragLeave}
