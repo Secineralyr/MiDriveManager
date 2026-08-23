@@ -156,10 +156,12 @@ describe('削除', () => {
 		const created = await createFolder('a1', makeClient(), { name: 'd', parentId: null });
 		const { client, fileDelete, folderDelete } = makeDeleteClient();
 
-		await deleteItems('a1', client, [
-			{ kind: 'file', id: 'f1' },
-			{ kind: 'folder', id: created.id },
-		]);
+		await deleteItems('a1', client, {
+			items: [
+				{ kind: 'file', id: 'f1' },
+				{ kind: 'folder', id: created.id },
+			],
+		});
 
 		expect(fileDelete).toHaveBeenCalledWith({ fileId: 'f1' });
 		expect(folderDelete).toHaveBeenCalledWith({ folderId: created.id });
@@ -173,9 +175,9 @@ describe('削除', () => {
 			code: 'HAS_CHILD_FILES_OR_FOLDERS',
 		});
 		const client = makeClient({ driveFoldersDelete: () => Promise.reject(apiError) });
-		await expect(deleteItems('a1', client, [{ kind: 'folder', id: 'd1' }])).rejects.toThrow(
-			'フォルダが空ではないため削除できません',
-		);
+		await expect(
+			deleteItems('a1', client, { items: [{ kind: 'folder', id: 'd1' }] }),
+		).rejects.toThrow('フォルダが空ではないため削除できません');
 	});
 
 	it('削除に失敗した時点で後続の削除は行われない', async () => {
@@ -183,10 +185,12 @@ describe('削除', () => {
 		fileDelete.mockRejectedValue(new Error('失敗'));
 
 		await expect(
-			deleteItems('a1', client, [
-				{ kind: 'file', id: 'f1' },
-				{ kind: 'folder', id: 'd1' },
-			]),
+			deleteItems('a1', client, {
+				items: [
+					{ kind: 'file', id: 'f1' },
+					{ kind: 'folder', id: 'd1' },
+				],
+			}),
 		).rejects.toThrow('失敗');
 		expect(folderDelete).not.toHaveBeenCalled();
 	});

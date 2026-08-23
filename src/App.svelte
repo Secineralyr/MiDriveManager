@@ -2,9 +2,9 @@
 	import { completeMiauth, startMiauthSession, takePendingMiauth } from './lib/auth/miauth';
 	import AccountWizard from '$components/organisms/AccountWizard.svelte';
 	import AppHeader from '$components/organisms/AppHeader.svelte';
+	import AppOverlays from '$components/organisms/AppOverlays.svelte';
 	import DrivePage from '$components/pages/DrivePage.svelte';
 	import Spinner from '$components/atoms/Spinner.svelte';
-	import ToastStack from '$components/organisms/ToastStack.svelte';
 	import { accountsStore } from './lib/stores/accounts.svelte';
 	import { forwardDriveErrorsToToast } from './lib/stores/drive-error-toast';
 	import { onMount } from 'svelte';
@@ -175,7 +175,7 @@
 	<DrivePage account={activeAccount} />
 {/if}
 
-<ToastStack />
+<AppOverlays />
 
 <style>
 	section {

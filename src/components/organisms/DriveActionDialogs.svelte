@@ -5,6 +5,7 @@
 	import PromptDialog from '$components/molecules/PromptDialog.svelte';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
+	import { driveTasks } from '../../lib/stores/drive-tasks';
 	import { selectionStore } from '../../lib/stores/selection.svelte';
 
 	type Props = {
@@ -72,14 +73,11 @@
 		}
 	};
 
-	/** 削除を確定する */
-	const handleDelete = async () => {
-		const ok = await driveActionsStore.deleteItems(account, deleteTargets);
+	/** 削除を確定する(操作キューへ積み、選択は解除する) */
+	const handleDelete = () => {
+		driveTasks.deleteItems(account, deleteTargets);
 		deleteOpen = false;
-		if (ok) {
-			selectionStore.clear();
-		}
-		await driveStore.refresh();
+		selectionStore.clear();
 	};
 </script>
 

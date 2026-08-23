@@ -1,9 +1,8 @@
 import type { AccountRecord, FileRecord } from '../db/schema';
 import type { ActionsClient, DriveItem } from '../services/drive-actions';
 import { createDriveClient } from '../api/client';
-import { driveActionsStore } from './drive-actions.svelte';
+import { driveTasks } from './drive-tasks';
 import { getCachedFile } from '../db/drive-cache';
-import { syncStore } from './sync.svelte';
 
 /** 基本操作用APIクライアントの生成関数 */
 type ActionsClientFactory = (host: string, token: string) => ActionsClient;
@@ -48,7 +47,7 @@ const loadClipboardFiles = async () => {
 	const loaded = await Promise.all(
 		fileItems.map((item) => getCachedFile(sourceAccountId, item.id)),
 	);
-	
+
 	return {
 		fileCount: fileItems.length,
 		files: loaded.filter((file): file is FileRecord => file !== undefined),
@@ -56,31 +55,23 @@ const loadClipboardFiles = async () => {
 };
 
 /**
- * 切り取った項目を移動として貼り付ける
+ * 切り取った項目の移動を操作キューへ積む
  * @param account - 貼り付け先のアカウント
  * @param targetFolderId - 貼り付け先のフォルダID(ルートはnull)
  * @param clientFactory - APIクライアントの生成関数
  * @returns 貼り付けの結果
  */
-const pasteCut = async (
+const pasteCut = (
 	account: AccountRecord,
 	targetFolderId: string | null,
 	clientFactory: ActionsClientFactory,
-): Promise<PasteResultShape> => {
+): PasteResultShape => {
 	if (state.sourceAccountId !== account.id) {
 		state.error = '切り取った項目は同じアカウント内にのみ移動できます';
 		return 'error';
 	}
-	
-	const ok = await driveActionsStore.moveItems(
-		account,
-		{ items: state.items, targetFolderId },
-		clientFactory,
-	);
-	if (!ok) {
-		return 'error';
-	}
-	
+
+	driveTasks.moveItems(account, { items: state.items, targetFolderId }, clientFactory);
 	resetContent();
 	return 'moved';
 };
@@ -95,17 +86,16 @@ const validateCopySource = (fileCount: number, files: FileRecord[]) => {
 	if (fileCount === 0) {
 		return 'フォルダはコピーできません';
 	}
-	
+
 	if (files.length === 0) {
 		return 'コピー元のファイルが見つかりません';
 	}
-	
+
 	return null;
 };
 
 /**
- * コピーしたファイルを複製として貼り付ける
- * 複製はサーバー側で非同期に処理されるため、完了後に全量同期を開始する
+ * コピーしたファイルの複製を操作キューへ積む
  * @param account - 貼り付け先のアカウント
  * @param targetFolderId - 貼り付け先のフォルダID(ルートはnull)
  * @param clientFactory - APIクライアントの生成関数
@@ -122,13 +112,8 @@ const pasteCopy = async (
 		state.error = validationError;
 		return 'error';
 	}
-	
-	const ok = await driveActionsStore.copyFiles(account, { files, targetFolderId }, clientFactory);
-	if (!ok) {
-		return 'error';
-	}
-	
-	syncStore.run(account);
+
+	driveTasks.copyFiles(account, { files, targetFolderId }, clientFactory);
 	return 'copied';
 };
 
@@ -208,11 +193,11 @@ export const clipboardStore = {
 
 	/**
 	 * クリップボードの内容を表示中フォルダへ貼り付ける
-	 * 切り取りは移動として実行し、コピーはURL取り込みによる複製として実行する
+	 * 切り取りは移動、コピーはURL取り込みによる複製として操作キューへ積む(実行はキューが行う)
 	 * @param account - 貼り付け先のアカウント
 	 * @param targetFolderId - 貼り付け先のフォルダID(ルートはnull)
 	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
-	 * @returns 貼り付けの結果
+	 * @returns 貼り付けの結果(movedとcopiedはキューへ積めたことを表す)
 	 */
 	pasteInto(
 		account: AccountRecord,
@@ -222,12 +207,12 @@ export const clipboardStore = {
 		if (!this.hasContent) {
 			return Promise.resolve('noop');
 		}
-		
+
 		state.error = null;
 		if (state.mode === 'cut') {
-			return pasteCut(account, targetFolderId, clientFactory);
+			return Promise.resolve(pasteCut(account, targetFolderId, clientFactory));
 		}
-		
+
 		return pasteCopy(account, targetFolderId, clientFactory);
 	},
 

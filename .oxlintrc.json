@@ -54,6 +54,12 @@
 			}
 		},
 		{
+			"files": ["**/*.svelte"],
+			"rules": {
+				"import/max-dependencies": ["error", { "max": 15 }]
+			}
+		},
+		{
 			"files": ["**/*.config.ts", "**/*.config.js"],
 			"rules": {
 				"import/no-default-export": "off"

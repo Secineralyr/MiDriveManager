@@ -12,6 +12,7 @@
 	import { clipboardStore } from '../../lib/stores/clipboard.svelte';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
+	import { driveTasks } from '../../lib/stores/drive-tasks';
 	import { resolveShortcut } from '../../lib/utils/shortcuts';
 	import { syncStore } from '../../lib/stores/sync.svelte';
 
@@ -135,21 +136,18 @@
 	};
 
 	/**
-	 * ドラッグ中の項目をフォルダへドロップして移動する
+	 * ドラッグ中の項目のフォルダへの移動を操作キューへ積む
 	 * @param targetFolderId - 移動先のフォルダID(ルートはnull)
 	 */
-	const handleDropItems = async (targetFolderId: string | null) => {
+	const handleDropItems = (targetFolderId: string | null) => {
 		const items = draggedKeys.map((key) => parseSelectionKey(key));
 		draggedKeys = [];
 		if (items.length === 0) {
 			return;
 		}
 
-		const ok = await driveActionsStore.moveItems(account, { items, targetFolderId });
-		if (ok) {
-			selectionStore.clear();
-		}
-		await driveStore.refresh();
+		driveTasks.moveItems(account, { items, targetFolderId });
+		selectionStore.clear();
 	};
 
 	/**
@@ -169,12 +167,11 @@
 		}
 	};
 
-	/** クリップボードの内容を表示中フォルダへ貼り付ける */
+	/** クリップボードの内容の貼り付け(移動または複製)を操作キューへ積む */
 	const pasteClipboard = async () => {
 		const result = await clipboardStore.pasteInto(account, driveStore.currentFolderId);
 		if (result === 'moved') {
 			selectionStore.clear();
-			await driveStore.refresh();
 		}
 	};
 

@@ -215,15 +215,28 @@ export const updateFileMetadata = async (
  * レートリミットを考慮して1件ずつ実行し、失敗した時点で中断する
  * @param accountId - 対象アカウントのアプリ内ID
  * @param client - APIクライアント
- * @param items - 削除する項目の一覧
+ * @param input - 削除する項目の一覧と進捗通知
  */
-export const deleteItems = async (accountId: string, client: ActionsClient, items: DriveItem[]) => {
-	for (const item of items) {
+export const deleteItems = async (
+	accountId: string,
+	client: ActionsClient,
+	input: {
+		/** 削除する項目の一覧 */
+		items: DriveItem[];
+		/** 1件削除するごとに呼ぶ進捗通知(完了件数, 全件数) */
+		onProgress?: (done: number, total: number) => void;
+	},
+) => {
+	const total = input.items.length;
+	input.onProgress?.(0, total);
+
+	for (const [index, item] of input.items.entries()) {
 		try {
 			// oxlint-disable-next-line eslint/no-await-in-loop - 一括削除はレート制御のため逐次実行が要件
 			await deleteItem(accountId, client, item);
 		} catch (error) {
 			throw translateDriveErrorInternal(error);
 		}
+		input.onProgress?.(index + 1, total);
 	}
 };

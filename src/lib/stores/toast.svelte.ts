@@ -40,7 +40,7 @@ const removeToast = (id: number) => {
 		clearTimeout(timer);
 		timers.delete(id);
 	}
-	
+
 	state.toasts = state.toasts.filter((toast) => toast.id !== id);
 };
 
@@ -82,7 +82,7 @@ export const toastStore = {
 				durationMs: AUTO_DISMISS_MS,
 			},
 		];
-		
+
 		timers.set(
 			id,
 			setTimeout(() => {

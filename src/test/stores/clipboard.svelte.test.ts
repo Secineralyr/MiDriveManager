@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDatabase, openDatabase } from '../../lib/db/database';
 import type { ActionsClient } from '../../lib/services/drive-actions';
 import { clipboardStore } from '../../lib/stores/clipboard.svelte';
+import { queueStore } from '../../lib/stores/queue.svelte';
 import { stubIndexedDb } from '../indexeddb-test-util';
 
 /** テスト用のアカウント */
@@ -97,13 +98,14 @@ describe('クリップボードの保持', () => {
 describe('切り取りの貼り付け', () => {
 	beforeEach(reset);
 
-	it('同じアカウントなら移動されクリップボードが空になる', async () => {
+	it('同じアカウントなら移動がキューへ積まれクリップボードが空になる', async () => {
 		const { client, moveBulk } = makeClient();
 		clipboardStore.setCut('a1', [{ kind: 'file', id: 'f1' }]);
 		const result = await clipboardStore.pasteInto(account, 'target', () => client);
 		expect(result).toBe('moved');
-		expect(moveBulk).toHaveBeenCalledWith({ fileIds: ['f1'], folderId: 'target' });
 		expect(clipboardStore.hasContent).toBe(false);
+		await queueStore.whenIdle();
+		expect(moveBulk).toHaveBeenCalledWith({ fileIds: ['f1'], folderId: 'target' });
 	});
 
 	it('別アカウントで切り取った項目はエラーになる', async () => {
@@ -119,11 +121,12 @@ describe('切り取りの貼り付け', () => {
 describe('コピーの貼り付け', () => {
 	beforeEach(reset);
 
-	it('キャッシュのURLから取り込みが実行されクリップボードは保持される', async () => {
+	it('キャッシュのURLからの取り込みがキューへ積まれクリップボードは保持される', async () => {
 		const { client, uploadFromUrl } = makeClient();
 		clipboardStore.setCopy('a1', [{ kind: 'file', id: 'f1' }]);
 		const result = await clipboardStore.pasteInto(account, 'target', () => client);
 		expect(result).toBe('copied');
+		await queueStore.whenIdle();
 		expect(uploadFromUrl).toHaveBeenCalledWith({
 			url: 'https://misskey.example/files/f1',
 			folderId: 'target',

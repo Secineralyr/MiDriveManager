@@ -94,7 +94,7 @@ export const moveCachedFiles = async (
 	const updates = records
 		.filter((record) => record !== undefined)
 		.map((record) => tx.store.put({ ...record, folderId, folderKey: folderId ?? '' }));
-	
+
 	await Promise.all([...updates, tx.done]);
 };
 
