@@ -193,10 +193,13 @@
 		outline-offset: 2px;
 	}
 
+	/* 階層の目安になる縦線を左に出す */
 	ul {
 		margin: 0;
+		margin-left: 12px;
 		padding: 0;
-		padding-left: 20px;
+		padding-left: 8px;
+		border-left: 1px solid var(--color-outline-weak);
 		list-style: none;
 	}
 </style>

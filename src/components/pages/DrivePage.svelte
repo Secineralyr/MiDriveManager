@@ -11,11 +11,11 @@
 		selectionStore,
 	} from '../../lib/stores/selection.svelte';
 	import { sortFiles, sortFolders } from '../../lib/utils/drive-sort';
-	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 	import DriveActionDialogs from '$components/organisms/DriveActionDialogs.svelte';
 	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
 	import type { MenuAction } from '../../lib/services/context-menu';
 	import PreviewModal from '$components/organisms/PreviewModal.svelte';
+	import SelectionMenu from '$components/molecules/SelectionMenu.svelte';
 	import { buildSelectionMenu } from '../../lib/services/context-menu';
 	import { createDriveShortcuts } from '../../lib/stores/drive-shortcuts';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
@@ -297,7 +297,7 @@
 	}}
 />
 
-<ContextMenu
+<SelectionMenu
 	open={menuPosition !== null}
 	x={menuPosition?.x ?? 0}
 	y={menuPosition?.y ?? 0}

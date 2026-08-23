@@ -35,6 +35,7 @@
 		border: 0;
 		border-radius: 9999px;
 		gap: 5px;
+		white-space: nowrap;
 		background-color: var(--color-accent);
 		font-family: inherit;
 		font-size: 1rem;

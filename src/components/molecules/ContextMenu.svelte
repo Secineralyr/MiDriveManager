@@ -1,5 +1,16 @@
 <script lang="ts" generics="T extends string">
-	import { fade } from 'svelte/transition';
+	import type { Component, ComponentType, SvelteComponent } from 'svelte';
+	import IconCheck from '@tabler/icons-svelte/icons/check';
+	import { popIn } from '../../lib/utils/transitions';
+
+	/** アイコンに渡すプロパティ */
+	type IconLikeProps = {
+		/** アイコンの大きさ */
+		size?: number | string;
+	};
+
+	/** メニュー項目に表示できるアイコン(関数型・クラス型の両方のコンポーネントを受ける) */
+	type MenuIcon = Component<IconLikeProps> | ComponentType<SvelteComponent<IconLikeProps>>;
 
 	type MenuItem = {
 		/** 操作の識別子 */
@@ -10,6 +21,10 @@
 		danger?: boolean;
 		/** 選べない状態かどうか */
 		disabled?: boolean;
+		/** 選択中の印(チェック)を付けるかどうか */
+		checked?: boolean;
+		/** 先頭に表示するアイコン */
+		icon?: MenuIcon;
 	};
 
 	type Props = {
@@ -25,9 +40,11 @@
 		onselect: (id: T) => void;
 		/** メニューを閉じる操作(項目選択後、外側クリック、Escで呼ばれる) */
 		onclose: () => void;
+		/** メニューを開くきっかけの要素(この要素の上のポインター操作では閉じず、トグルに使える) */
+		anchor?: HTMLElement | null;
 	};
 
-	let { open, x, y, items, onselect, onclose }: Props = $props();
+	let { open, x, y, items, onselect, onclose, anchor = null }: Props = $props();
 
 	let menu = $state<HTMLElement | null>(null);
 	let width = $state(0);
@@ -78,7 +95,12 @@
 			return;
 		}
 
-		if (!(event.target instanceof Node) || !menu.contains(event.target)) {
+		if (!(event.target instanceof Node)) {
+			onclose();
+			return;
+		}
+
+		if (!menu.contains(event.target) && anchor?.contains(event.target) !== true) {
 			onclose();
 		}
 	};
@@ -117,19 +139,30 @@
 		bind:clientHeight={height}
 		style:left="{left}px"
 		style:top="{top}px"
-		transition:fade={{ duration: 250 }}
+		transition:popIn
 	>
 		{#each items as item (item.id)}
 			<li role="none">
 				<button
 					type="button"
-					role="menuitem"
+					role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
 					disabled={item.disabled === true}
 					data-danger={item.danger === true}
+					aria-checked={item.checked}
 					onclick={() => {
 						handleSelect(item.id);
 					}}
 				>
+					<span aria-hidden="true">
+						{#if item.checked === true}
+							<IconCheck size={14} />
+						{/if}
+					</span>
+					{#if item.icon !== undefined}
+						<span aria-hidden="true">
+							<item.icon size={15} />
+						</span>
+					{/if}
 					{item.label}
 				</button>
 			</li>
@@ -141,6 +174,7 @@
 	menu {
 		position: fixed;
 		z-index: 100;
+		transform-origin: top left;
 		margin: 0;
 		padding: 5px 0;
 		border: 1px solid var(--color-outline);
@@ -155,9 +189,13 @@
 	}
 
 	button {
+		display: flex;
 		flex: 1;
+		align-items: center;
 		margin: 0;
 		padding: 8px 15px;
+		padding-left: 10px;
+		gap: 5px;
 		border: 0;
 		background-color: transparent;
 		font-family: inherit;
@@ -181,5 +219,11 @@
 
 	button[data-danger='true'] {
 		color: var(--color-danger);
+	}
+
+	button > span {
+		display: inline-flex;
+		justify-content: center;
+		inline-size: 15px;
 	}
 </style>

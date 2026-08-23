@@ -72,3 +72,25 @@ export const setTutorialSeen = async () => {
 	const db = await openDatabase();
 	await db.put('settings', true, 'tutorialSeen');
 };
+
+/** テーマの選択(systemはOS設定に従う) */
+export type ThemeMode = 'system' | 'dark' | 'light';
+
+/**
+ * テーマの選択を取得する
+ * @returns テーマの選択。未設定ならsystem
+ */
+export const getThemeMode = async (): Promise<ThemeMode> => {
+	const db = await openDatabase();
+	const value = await db.get('settings', 'themeMode');
+	return value === 'dark' || value === 'light' ? value : 'system';
+};
+
+/**
+ * テーマの選択を保存する
+ * @param mode - テーマの選択
+ */
+export const setThemeMode = async (mode: ThemeMode) => {
+	const db = await openDatabase();
+	await db.put('settings', mode, 'themeMode');
+};

@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
 	import { computeBreadcrumbLayout } from '../../lib/utils/breadcrumb-layout';
-	import { slide } from 'svelte/transition';
+	import { popIn } from '../../lib/utils/transitions';
 
 	type Crumb = {
 		/** フォルダID(ルートはnull) */
@@ -14,9 +15,55 @@
 		items: Crumb[];
 		/** 経路のフォルダ選択時の処理 */
 		onnavigate: (folderId: string | null) => void;
+		/** 経路のフォルダへの項目ドロップ時の処理 */
+		ondropitems?: (folderId: string | null) => void;
+		/** 経路のフォルダへのOSファイルドロップ時の処理 */
+		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
 	};
 
-	let { items, onnavigate }: Props = $props();
+	let { items, onnavigate, ondropitems, ondropfiles }: Props = $props();
+
+	/** ドロップ強調中の項目のキー(ルートは'root'、なければnull) */
+	let dropoverKey = $state<string | null>(null);
+
+	/**
+	 * 項目の強調用キーを返す
+	 * @param item - 経路の項目
+	 * @returns 強調用キー
+	 */
+	const keyOf = (item: Crumb) => item.id ?? 'root';
+
+	/**
+	 * 受け入れられる種類のドロップなら受け入れを表明して項目を強調する
+	 * @param item - 対象の項目
+	 * @param event - ドラッグイベント
+	 */
+	const handleCrumbDragOver = (item: Crumb, event: DragEvent) => {
+		const accepted = acceptDragOver(event, {
+			items: ondropitems !== undefined,
+			files: ondropfiles !== undefined,
+		});
+		dropoverKey = accepted ? keyOf(item) : dropoverKey;
+	};
+
+	/** ドロップ対象の強調を解除する */
+	const handleCrumbDragLeave = () => {
+		dropoverKey = null;
+	};
+
+	/**
+	 * ドロップされた項目またはOSファイルを経路のフォルダ宛てとして受け取る
+	 * @param item - 対象の項目
+	 * @param event - ドラッグイベント
+	 */
+	const handleCrumbDrop = (item: Crumb, event: DragEvent) => {
+		dropoverKey = null;
+		dispatchDrop(event, {
+			onitems: ondropitems === undefined ? undefined : () => ondropitems(item.id),
+			onfiles:
+				ondropfiles === undefined ? undefined : (transfer) => ondropfiles(item.id, transfer),
+		});
+	};
 
 	/** 項目間の余白(CSSのgapと一致させる) */
 	const GAP = 5;
@@ -83,6 +130,14 @@
 				{#if items.length > 1}
 					<button
 						type="button"
+						data-dropover={dropoverKey === keyOf(first)}
+						ondragover={(event) => {
+							handleCrumbDragOver(first, event);
+						}}
+						ondragleave={handleCrumbDragLeave}
+						ondrop={(event) => {
+							handleCrumbDrop(first, event);
+						}}
 						onclick={() => {
 							handleSelect(first);
 						}}
@@ -91,7 +146,17 @@
 					</button>
 					<span aria-hidden="true">/</span>
 				{:else}
-					<strong>{first.name}</strong>
+					<strong
+						role="group"
+						data-dropover={dropoverKey === keyOf(first)}
+						ondragover={(event) => {
+							handleCrumbDragOver(first, event);
+						}}
+						ondragleave={handleCrumbDragLeave}
+						ondrop={(event) => {
+							handleCrumbDrop(first, event);
+						}}>{first.name}</strong
+					>
 				{/if}
 			</li>
 		{/if}
@@ -109,7 +174,7 @@
 				</button>
 				<span aria-hidden="true">/</span>
 				{#if menuOpen}
-					<menu transition:slide={{ duration: 250 }}>
+					<menu transition:popIn>
 						{#each hiddenItems as item (item.id ?? 'root')}
 							<li>
 								<button
@@ -131,6 +196,14 @@
 				{#if index < tailItems.length - 1}
 					<button
 						type="button"
+						data-dropover={dropoverKey === keyOf(item)}
+						ondragover={(event) => {
+							handleCrumbDragOver(item, event);
+						}}
+						ondragleave={handleCrumbDragLeave}
+						ondrop={(event) => {
+							handleCrumbDrop(item, event);
+						}}
 						onclick={() => {
 							handleSelect(item);
 						}}
@@ -139,7 +212,17 @@
 					</button>
 					<span aria-hidden="true">/</span>
 				{:else}
-					<strong>{item.name}</strong>
+					<strong
+						role="group"
+						data-dropover={dropoverKey === keyOf(item)}
+						ondragover={(event) => {
+							handleCrumbDragOver(item, event);
+						}}
+						ondragleave={handleCrumbDragLeave}
+						ondrop={(event) => {
+							handleCrumbDrop(item, event);
+						}}>{item.name}</strong
+					>
 				{/if}
 			</li>
 		{/each}
@@ -229,6 +312,7 @@
 		position: absolute;
 		top: 100%;
 		left: 0;
+		transform-origin: top left;
 		z-index: 100;
 		flex-direction: column;
 		margin: 5px 0;
@@ -259,5 +343,12 @@
 	menu button:hover {
 		background-color: var(--color-surface-hover);
 		color: var(--color-text);
+	}
+
+	button[data-dropover='true'],
+	strong[data-dropover='true'] {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
+		background-color: var(--color-surface-active);
 	}
 </style>

@@ -20,9 +20,11 @@
 	--color-scrim: hsl(0 0% 0% / 0.5);
 }
 
-/* ライトモード */
+/* ライトモード(OS設定。手動でダークが選ばれている時は適用しない) */
 @media (prefers-color-scheme: light) {
-	:root {
+	:root:not([data-theme='dark']) {
+		color-scheme: light;
+
 		--color-bg: hsl(0 0% 95%);
 		--color-surface: hsl(0 0% 100%);
 		--color-surface-hover: hsl(0 0% 90%);
@@ -38,6 +40,31 @@
 		--color-focus: hsl(210 80% 45%);
 		--color-scrim: hsl(0 0% 0% / 0.25);
 	}
+}
+
+/* ライトモード(手動選択) */
+:root[data-theme='light'] {
+	color-scheme: light;
+
+	--color-bg: hsl(0 0% 95%);
+	--color-surface: hsl(0 0% 100%);
+	--color-surface-hover: hsl(0 0% 90%);
+	--color-surface-active: hsl(0 0% 85%);
+	--color-outline: hsl(0 0% 70%);
+	--color-outline-weak: hsl(0 0% 85%);
+	--color-text: hsl(0 0% 10%);
+	--color-text-muted: hsl(0 0% 40%);
+	--color-text-faint: hsl(0 0% 55%);
+	--color-accent: hsl(0 0% 15%);
+	--color-on-accent: hsl(0 0% 100%);
+	--color-danger: hsl(0 70% 45%);
+	--color-focus: hsl(210 80% 45%);
+	--color-scrim: hsl(0 0% 0% / 0.25);
+}
+
+/* ダークモード(手動選択) */
+:root[data-theme='dark'] {
+	color-scheme: dark;
 }
 
 *,

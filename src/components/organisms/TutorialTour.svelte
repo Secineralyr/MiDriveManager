@@ -29,7 +29,7 @@
 	const TOOLTIP_GAP = 15;
 
 	/** 吹き出しの幅(px) */
-	const TOOLTIP_WIDTH = 320;
+	const TOOLTIP_WIDTH = 360;
 
 	/** デモに表示するアカウント */
 	const demoAccount: AccountRecord = {
@@ -188,10 +188,10 @@
 				viewMode="list"
 				sortKey="name"
 				sortOrder="asc"
-				selectedKeys={['file:f1']}
+				selectedKeys={[]}
 				detailTarget={{ kind: 'file', file: TUTORIAL_SELECTED_FILE }}
 				detailsOpen={true}
-				selectionSize={TUTORIAL_SELECTED_FILE.size}
+				selectionSize={0}
 				onnavigate={() => {}}
 				onsort={() => {}}
 				onviewmode={() => {}}
@@ -311,8 +311,8 @@
 		border: 1px solid var(--color-outline);
 		border-radius: 10px;
 		background-color: var(--color-surface);
-		min-width: 320px;
-		max-width: 320px;
+		min-width: 360px;
+		max-width: 360px;
 		transition:
 			top 250ms ease,
 			left 250ms ease;
@@ -334,13 +334,16 @@
 
 	footer {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: flex-end;
 		gap: 10px;
 	}
 
 	footer > span:first-child {
+		margin-right: auto;
 		font-size: 0.85rem;
+		white-space: nowrap;
 		color: var(--color-text-faint);
 	}
 

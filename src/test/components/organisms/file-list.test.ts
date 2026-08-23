@@ -128,6 +128,14 @@ describe('ファイル一覧(リスト表示)', () => {
 		await fireEvent.click(getRow('がぞー.png'), { ctrlKey: true });
 		expect(onselectitem).toHaveBeenCalledWith('file', 'f1', { toggle: true, range: false });
 	});
+});
+
+describe('ファイル一覧の選択と空表示', () => {
+	it('チェックボックスを押すとトグル選択として通知される', async () => {
+		const { onselectitem } = renderList();
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'がぞー.pngを選択' }));
+		expect(onselectitem).toHaveBeenCalledWith('file', 'f1', { toggle: true, range: false });
+	});
 
 	it('選択中の行には選択状態が付く', () => {
 		renderList({ selectedKeys: ['file:f1'] });

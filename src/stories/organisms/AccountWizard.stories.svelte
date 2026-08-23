@@ -23,6 +23,8 @@
 
 <Story name="キャンセル可能" args={{ cancellable: true }} />
 
+<Story name="アカウント追加(オーバーレイ)" args={{ cancellable: true, overlay: true }} />
+
 <Story name="確認中" args={{ busy: true }} />
 
 <Story name="エラー表示" args={{ error: '認証の確認に失敗しました(HTTP 500)' }} />

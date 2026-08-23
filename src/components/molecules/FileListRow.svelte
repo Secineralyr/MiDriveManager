@@ -66,6 +66,15 @@
 	};
 
 	/**
+	 * チェックボックスで選択を切り替える(他の選択は保ったまま)
+	 * @param event - イベント
+	 */
+	const handleCheckbox = (event: Event) => {
+		event.stopPropagation();
+		onselect?.({ toggle: true, range: false });
+	};
+
+	/**
 	 * 右クリックでブラウザのメニューの代わりにコンテキストメニューを開く
 	 * @param event - マウスイベント
 	 */
@@ -138,6 +147,17 @@
 	aria-selected={selected}
 >
 	<td>
+		<input
+			type="checkbox"
+			aria-label="{name}を選択"
+			checked={selected}
+			onclick={handleCheckbox}
+			ondblclick={(event) => {
+				event.stopPropagation();
+			}}
+		/>
+	</td>
+	<td>
 		<FileTypeIcon {folder} {mimeType} />
 		<span>{name}</span>
 	</td>
@@ -180,20 +200,36 @@
 		color: var(--color-text);
 	}
 
+	/* 1列目: チェックボックス */
 	td:first-child {
+		padding-right: 0;
+	}
+
+	/* 2列目: アイコンと名前 */
+	td:nth-child(2) {
 		display: flex;
 		align-items: center;
 		gap: 10px;
 		min-width: 0;
 	}
 
-	td:first-child > span {
+	td:nth-child(2) > span {
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
-	td:nth-child(2),
-	td:nth-child(3) {
+	td:nth-child(3),
+	td:nth-child(4) {
 		color: var(--color-text-muted);
 	}
+
+	input {
+		display: block;
+		margin: 0;
+		accent-color: var(--color-accent);
+		inline-size: 15px;
+		block-size: 15px;
+		cursor: pointer;
+	}
+
 </style>

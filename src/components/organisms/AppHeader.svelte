@@ -2,8 +2,14 @@
 	import AccountMenu from '$components/organisms/AccountMenu.svelte';
 	import type { AccountRecord } from '../../lib/db/schema';
 	import ContextMenu from '$components/molecules/ContextMenu.svelte';
+	import IconDeviceDesktop from '@tabler/icons-svelte/icons/device-desktop';
+	import IconHelp from '@tabler/icons-svelte/icons/help';
+	import IconMoon from '@tabler/icons-svelte/icons/moon';
+	import IconSun from '@tabler/icons-svelte/icons/sun';
 	import SearchBox from '$components/molecules/SearchBox.svelte';
 	import SyncIndicator from '$components/molecules/SyncIndicator.svelte';
+	import type { ThemeMode } from '../../lib/db/settings';
+	import { themeStore } from '../../lib/stores/theme.svelte';
 
 	type Props = {
 		/** アカウント一覧 */
@@ -50,22 +56,64 @@
 	/** アプリメニューの表示位置(閉じている時はnull) */
 	let appMenuPosition = $state<{ x: number; y: number } | null>(null);
 
+	/** ロゴのボタン要素(メニューのトグルと位置決めに使う) */
+	let logoButton = $state<HTMLElement | null>(null);
+
+	/** テーマ項目の識別子とテーマの対応 */
+	const THEME_ITEMS: { id: `theme-${ThemeMode}`; mode: ThemeMode; label: string; icon: typeof IconSun }[] = [
+		{ id: 'theme-system', mode: 'system', label: 'テーマ: システム', icon: IconDeviceDesktop },
+		{ id: 'theme-dark', mode: 'dark', label: 'テーマ: ダーク', icon: IconMoon },
+		{ id: 'theme-light', mode: 'light', label: 'テーマ: ライト', icon: IconSun },
+	];
+
+	const appMenuItems = $derived([
+		{ id: 'tutorial', label: '使い方を見る', icon: IconHelp },
+		...THEME_ITEMS.map((item) => ({
+			id: item.id,
+			label: item.label,
+			icon: item.icon,
+			checked: themeStore.mode === item.mode,
+		})),
+	]);
+
 	/**
-	 * ロゴの位置に合わせてアプリメニューを開く
-	 * @param event - マウスイベント
+	 * アプリメニューの項目を実行する
+	 * @param id - 選ばれた項目の識別子
 	 */
-	const handleLogoClick = (event: MouseEvent) => {
-		if (event.currentTarget instanceof HTMLElement) {
-			const rect = event.currentTarget.getBoundingClientRect();
-			appMenuPosition = { x: rect.left, y: rect.bottom + 5 };
+	const handleAppMenuSelect = (id: string) => {
+		if (id === 'tutorial') {
+			onshowtutorial();
+			return;
 		}
+
+		const theme = THEME_ITEMS.find((item) => item.id === id);
+		if (theme !== undefined) {
+			const _ = themeStore.set(theme.mode);
+		}
+	};
+
+	/** ロゴの位置に合わせてアプリメニューを開閉する(開いている時は閉じる) */
+	const handleLogoClick = () => {
+		if (appMenuPosition !== null || logoButton === null) {
+			appMenuPosition = null;
+			return;
+		}
+
+		const rect = logoButton.getBoundingClientRect();
+		appMenuPosition = { x: rect.left, y: rect.bottom + 5 };
 	};
 </script>
 
 <header>
 	<div>
 		<div>
-			<button type="button" aria-label="アプリメニュー" onclick={handleLogoClick}>
+			<button
+				type="button"
+				aria-label="アプリメニュー"
+				aria-expanded={appMenuPosition !== null}
+				bind:this={logoButton}
+				onclick={handleLogoClick}
+			>
 				<img src="/favicon.svg" alt="" />
 			</button>
 		</div>
@@ -83,12 +131,9 @@
 	open={appMenuPosition !== null}
 	x={appMenuPosition?.x ?? 0}
 	y={appMenuPosition?.y ?? 0}
-	items={[{ id: 'tutorial', label: '使い方を見る' }]}
-	onselect={(id) => {
-		if (id === 'tutorial') {
-			onshowtutorial();
-		}
-	}}
+	items={appMenuItems}
+	anchor={logoButton}
+	onselect={handleAppMenuSelect}
 	onclose={() => {
 		appMenuPosition = null;
 	}}

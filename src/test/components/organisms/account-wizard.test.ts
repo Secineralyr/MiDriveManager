@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import AccountWizard from '$components/organisms/AccountWizard.svelte';
 import type { ComponentProps } from 'svelte';
+import { stubElementAnimate } from '../../animation-test-util';
 
 /**
  * 省略された項目を既定値で補ってウィザードを描画する
@@ -9,6 +10,7 @@ import type { ComponentProps } from 'svelte';
  * @returns 描画結果とコールバックのモック
  */
 const renderWizard = (props: Partial<ComponentProps<typeof AccountWizard>> = {}) => {
+	stubElementAnimate();
 	const onstart = vi.fn<(host: string) => void>();
 	const oncancel = vi.fn<() => void>();
 	const onacceptnotice = vi.fn<() => void>();
@@ -84,6 +86,13 @@ describe('アカウント追加ウィザードの操作', () => {
 		const { oncancel } = renderWizard({ cancellable: true });
 		await fireEvent.click(screen.getByText('キャンセル'));
 		expect(oncancel).toHaveBeenCalledWith();
+	});
+});
+
+describe('アカウント追加時のオーバーレイ表示', () => {
+	it('overlay指定で背景を重ねる表示になる', () => {
+		const { container } = renderWizard({ overlay: true, cancellable: true });
+		expect(container.querySelector('section')?.dataset.overlay).toBe('true');
 	});
 });
 

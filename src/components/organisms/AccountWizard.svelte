@@ -2,6 +2,8 @@
 	import Button from '$components/atoms/Button.svelte';
 	import Spinner from '$components/atoms/Spinner.svelte';
 	import TextField from '$components/atoms/TextField.svelte';
+	import { fade } from 'svelte/transition';
+	import { popIn } from '../../lib/utils/transitions';
 
 	/** 初回利用時に同意を求める諸注意(段落ごと) */
 	const NOTICE_PARAGRAPHS = [
@@ -11,6 +13,8 @@
 	];
 
 	type Props = {
+		/** メイン画面の上に重ねて表示するかどうか(2回目以降のアカウント追加時) */
+		overlay?: boolean;
 		/** 諸注意に同意済みかどうか(未同意ならホスト名入力の前に諸注意を表示する) */
 		noticeAccepted: boolean;
 		/** 諸注意に同意した時の処理 */
@@ -27,8 +31,16 @@
 		oncancel: () => void;
 	};
 
-	let { noticeAccepted, onacceptnotice, cancellable, busy, error, onstart, oncancel }: Props =
-		$props();
+	let {
+		overlay = false,
+		noticeAccepted,
+		onacceptnotice,
+		cancellable,
+		busy,
+		error,
+		onstart,
+		oncancel,
+	}: Props = $props();
 
 	let host = $state('misskey.io');
 	let inputError = $state<string | null>(null);
@@ -49,8 +61,8 @@
 	};
 </script>
 
-<section>
-	<div>
+<section data-overlay={overlay} transition:fade|global={{ duration: overlay ? 250 : 0 }}>
+	<div transition:popIn|global={{ duration: overlay ? 250 : 0 }}>
 		<h1>misskeyDriveManager</h1>
 		{#if !noticeAccepted}
 			<h2>ご利用にあたっての注意</h2>
@@ -98,6 +110,19 @@
 		justify-content: center;
 		flex: 1;
 		padding: 20px;
+	}
+
+	/* 2回目以降のアカウント追加はメイン画面の上に半透明+ブラーの背景で重ねる */
+	section[data-overlay='true'] {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 100;
+		background-color: var(--color-scrim);
+		-webkit-backdrop-filter: blur(4px);
+		backdrop-filter: blur(4px);
 	}
 
 	section > div {

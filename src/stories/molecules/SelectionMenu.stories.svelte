@@ -1,11 +1,11 @@
 <script module lang="ts">
-	import ContextMenu from '$components/molecules/ContextMenu.svelte';
+	import SelectionMenu from '$components/molecules/SelectionMenu.svelte';
 	import { buildSelectionMenu } from '../../lib/services/context-menu';
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 
 	const { Story } = defineMeta({
-		title: 'molecules/ContextMenu',
-		component: ContextMenu,
+		title: 'molecules/SelectionMenu',
+		component: SelectionMenu,
 	});
 </script>
 
@@ -31,23 +31,6 @@
 			{ kind: 'folder', id: 'd1' },
 			{ kind: 'file', id: 'f1' },
 		]),
-		onselect: () => {},
-		onclose: () => {},
-	}}
-/>
-
-<Story
-	name="チェック付き(テーマ選択)"
-	args={{
-		open: true,
-		x: 40,
-		y: 40,
-		items: [
-			{ id: 'tutorial', label: '使い方を見る' },
-			{ id: 'theme-system', label: 'テーマ: システム', checked: true },
-			{ id: 'theme-dark', label: 'テーマ: ダーク', checked: false },
-			{ id: 'theme-light', label: 'テーマ: ライト', checked: false },
-		],
 		onselect: () => {},
 		onclose: () => {},
 	}}

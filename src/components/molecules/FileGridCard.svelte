@@ -62,6 +62,15 @@
 	};
 
 	/**
+	 * チェックボックスで選択を切り替える(他の選択は保ったまま)
+	 * @param event - イベント
+	 */
+	const handleCheckbox = (event: Event) => {
+		event.stopPropagation();
+		onselect?.({ toggle: true, range: false });
+	};
+
+	/**
 	 * 右クリックでブラウザのメニューの代わりにコンテキストメニューを開く
 	 * @param event - マウスイベント
 	 */
@@ -118,31 +127,42 @@
 	};
 </script>
 
-<button
-	type="button"
-	draggable="true"
-	onclick={handleClick}
-	ondblclick={handleDblClick}
-	oncontextmenu={handleContextMenu}
-	ondragstart={handleDragStart}
-	ondragend={handleDragEnd}
-	ondragover={handleDragOver}
-	ondragleave={handleDragLeave}
-	ondrop={handleDrop}
-	title={name}
-	data-selected={selected}
-	data-dropover={dropover}
-	aria-pressed={selected}
->
-	<span>
-		{#if thumbnailUrl !== null}
-			<img src={thumbnailUrl} alt="" loading="lazy" />
-		{:else}
-			<FileTypeIcon {folder} {mimeType} size={30} />
-		{/if}
-	</span>
-	<span>{name}</span>
-</button>
+<div>
+	<button
+		type="button"
+		draggable="true"
+		onclick={handleClick}
+		ondblclick={handleDblClick}
+		oncontextmenu={handleContextMenu}
+		ondragstart={handleDragStart}
+		ondragend={handleDragEnd}
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
+		title={name}
+		data-selected={selected}
+		data-dropover={dropover}
+		aria-pressed={selected}
+	>
+		<span>
+			{#if thumbnailUrl !== null}
+				<img src={thumbnailUrl} alt="" loading="lazy" />
+			{:else}
+				<FileTypeIcon {folder} {mimeType} size={30} />
+			{/if}
+		</span>
+		<span>{name}</span>
+	</button>
+	<input
+		type="checkbox"
+		aria-label="{name}を選択"
+		checked={selected}
+		onclick={handleCheckbox}
+		ondblclick={(event) => {
+			event.stopPropagation();
+		}}
+	/>
+</div>
 
 <style>
 	button {
@@ -208,5 +228,32 @@
 		white-space: nowrap;
 		color: var(--color-text);
 		max-width: 100%;
+	}
+
+	div {
+		display: flex;
+		flex: 1;
+		position: relative;
+	}
+
+	div > input {
+		display: block;
+		position: absolute;
+		top: 8px;
+		left: 8px;
+		z-index: 1;
+		margin: 0;
+		accent-color: var(--color-accent);
+		inline-size: 16px;
+		block-size: 16px;
+		opacity: 0;
+		cursor: pointer;
+		transition: opacity 250ms ease;
+	}
+
+	div:hover > input,
+	div > input:checked,
+	div > input:focus-visible {
+		opacity: 1;
 	}
 </style>

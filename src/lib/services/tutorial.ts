@@ -89,8 +89,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 	{
 		target: 'search',
 		title: '検索',
-		description:
-			'ドライブ全体をファイル名・フォルダ名・コメントで検索します。',
+		description: 'ドライブ全体をファイル名・フォルダ名・コメントで検索します。',
 	},
 	{
 		target: 'details',

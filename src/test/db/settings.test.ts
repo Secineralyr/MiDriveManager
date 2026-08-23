@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	getActiveAccountId,
 	getNoticeAccepted,
+	getThemeMode,
 	getTutorialSeen,
 	setActiveAccountId,
 	setNoticeAccepted,
+	setThemeMode,
 	setTutorialSeen,
 } from '../../lib/db/settings';
 import { closeDatabase } from '../../lib/db/database';
@@ -55,5 +57,18 @@ describe('チュートリアル表示済みの設定', () => {
 		await expect(getTutorialSeen()).resolves.toBe(false);
 		await setTutorialSeen();
 		await expect(getTutorialSeen()).resolves.toBe(true);
+	});
+});
+
+describe('テーマの設定', () => {
+	beforeEach(async () => {
+		await closeDatabase();
+		stubIndexedDb();
+	});
+
+	it('未設定の場合はsystemになり、保存した選択を取得できる', async () => {
+		await expect(getThemeMode()).resolves.toBe('system');
+		await setThemeMode('light');
+		await expect(getThemeMode()).resolves.toBe('light');
 	});
 });

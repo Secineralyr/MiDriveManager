@@ -3,6 +3,8 @@
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import IconDownload from '@tabler/icons-svelte/icons/download';
 	import IconX from '@tabler/icons-svelte/icons/x';
+	import Spinner from '$components/atoms/Spinner.svelte';
+	import { createDialogCloser } from '../../lib/utils/dialog-close.svelte';
 	import { fileKind } from '../../lib/utils/file-kind';
 	import { formatFileSize } from '../../lib/utils/format';
 
@@ -18,25 +20,40 @@
 	let { file, onclose, ondownload }: Props = $props();
 
 	let dialog = $state<HTMLDialogElement | null>(null);
+	let mediaLoading = $state(false);
 
 	const kind = $derived(file === null ? 'other' : fileKind(file.type));
 
 	$effect(() => {
-		if (dialog === null) {
-			return;
-		}
-		if (file !== null && !dialog.open) {
-			dialog.showModal();
-		} else if (file === null && dialog.open) {
-			dialog.close();
-		}
+		// ファイルが変わったら、メディアの読み込み表示をやり直す
+		mediaLoading = file !== null && fileKind(file.type) !== 'other';
 	});
 
-	/** Escキーなどでダイアログが閉じられた時に状態を同期する */
+	/** メディアの読み込み完了(または失敗)で読み込み表示を消す */
+	const handleMediaReady = () => {
+		mediaLoading = false;
+	};
+
+	const closer = createDialogCloser();
+
+	$effect(() => {
+		closer.sync(file !== null, dialog);
+	});
+
+	/** ダイアログが閉じられた時に状態を同期する */
 	const handleClose = () => {
 		if (file !== null) {
 			onclose();
 		}
+	};
+
+	/**
+	 * Escキーでの即時クローズを止め、アニメーション付きの閉じる処理へ流す
+	 * @param event - cancelイベント
+	 */
+	const handleCancelEvent = (event: Event) => {
+		event.preventDefault();
+		onclose();
 	};
 
 	/**
@@ -55,7 +72,13 @@
 	};
 </script>
 
-<dialog bind:this={dialog} onclose={handleClose} onclick={handleDialogClick}>
+<dialog
+	bind:this={dialog}
+	data-closing={closer.closing}
+	onclose={handleClose}
+	oncancel={handleCancelEvent}
+	onclick={handleDialogClick}
+>
 	{#if file !== null}
 		<header>
 			<button type="button" aria-label="プレビューを閉じる" onclick={onclose}>
@@ -76,13 +99,37 @@
 			{/if}
 		</header>
 		<div data-close-target>
+			{#if mediaLoading}
+				<span data-loading>
+					<Spinner size={30} />
+					<span>読み込んでいます</span>
+				</span>
+			{/if}
 			{#if kind === 'image'}
-				<img src={file.url} alt={file.name} />
+				<img
+					src={file.url}
+					alt={file.name}
+					data-mediaready={!mediaLoading}
+					onload={handleMediaReady}
+					onerror={handleMediaReady}
+				/>
 			{:else if kind === 'video'}
 				<!-- svelte-ignore a11y_media_has_caption -->
-				<video src={file.url} controls></video>
+				<video
+					src={file.url}
+					controls
+					data-mediaready={!mediaLoading}
+					onloadeddata={handleMediaReady}
+					onerror={handleMediaReady}
+				></video>
 			{:else if kind === 'audio'}
-				<audio src={file.url} controls></audio>
+				<audio
+					src={file.url}
+					controls
+					data-mediaready={!mediaLoading}
+					oncanplay={handleMediaReady}
+					onerror={handleMediaReady}
+				></audio>
 			{:else}
 				<p>
 					<FileTypeIcon mimeType={file.type} size={40} />
@@ -108,8 +155,24 @@
 		max-height: 100dvh;
 		width: 100vw;
 		height: 100dvh;
-		background-color: hsl(0 0% 5% / 0.95);
+		background-color: hsl(0 0% 5% / 0.5);
 		color: hsl(0 0% 95%);
+	}
+
+	/* フェードで出入りする(閉じる時はJS側でclose()を遅らせ、data-closingの退出スタイルへ遷移させる) */
+	dialog[open] {
+		opacity: 1;
+		transition: opacity 250ms ease;
+	}
+
+	@starting-style {
+		dialog[open] {
+			opacity: 0;
+		}
+	}
+
+	dialog[open][data-closing='true'] {
+		opacity: 0;
 	}
 
 	dialog[open] {
@@ -195,5 +258,27 @@
 		margin: 0;
 		gap: 10px;
 		color: hsl(0 0% 65%);
+	}
+
+	/* 読み込み中の表示 */
+	[data-loading] {
+		display: flex;
+		position: absolute;
+		align-items: center;
+		gap: 10px;
+		font-size: 0.95rem;
+		color: hsl(0 0% 65%);
+	}
+
+	/* メディアは読み込みが終わるまで隠し、終わったらフェードで表示する */
+	img,
+	video,
+	audio {
+		opacity: 0;
+		transition: opacity 250ms ease;
+	}
+
+	[data-mediaready='true'] {
+		opacity: 1;
 	}
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$components/atoms/Button.svelte';
+	import { createDialogCloser } from '../../lib/utils/dialog-close.svelte';
 
 	type Props = {
 		/** 表示するかどうか */
@@ -30,26 +31,35 @@
 
 	let dialog = $state<HTMLDialogElement | null>(null);
 
+	const closer = createDialogCloser();
+
 	$effect(() => {
-		if (dialog === null) {
-			return;
-		}
-		if (open && !dialog.open) {
-			dialog.showModal();
-		} else if (!open && dialog.open) {
-			dialog.close();
-		}
+		closer.sync(open, dialog);
 	});
 
-	/** Escキーなどでダイアログが閉じられた時にキャンセル扱いにする */
+	/** ダイアログが閉じられた時にキャンセル扱いにする */
 	const handleClose = () => {
 		if (open) {
 			oncancel();
 		}
 	};
+
+	/**
+	 * Escキーでの即時クローズを止め、アニメーション付きの閉じる処理へ流す
+	 * @param event - cancelイベント
+	 */
+	const handleCancelEvent = (event: Event) => {
+		event.preventDefault();
+		oncancel();
+	};
 </script>
 
-<dialog bind:this={dialog} onclose={handleClose}>
+<dialog
+	bind:this={dialog}
+	data-closing={closer.closing}
+	onclose={handleClose}
+	oncancel={handleCancelEvent}
+>
 	<h2>{title}</h2>
 	<p>{message}</p>
 	<div>
@@ -68,8 +78,49 @@
 		color: var(--color-text);
 	}
 
+	/* サブメニューと同様に、縮小+ブラーから拡大しつつフェードして出入りする */
+	/* 閉じる時はJS側でclose()を遅らせ、data-closingの退出スタイルへ遷移させる */
+	dialog[open] {
+		opacity: 1;
+		transform: scale(1);
+		filter: blur(0);
+		transition:
+			opacity 250ms ease,
+			transform 250ms ease,
+			filter 250ms ease;
+	}
+
+	@starting-style {
+		dialog[open] {
+			opacity: 0;
+			transform: scale(0.9);
+			filter: blur(4px);
+		}
+	}
+
+	dialog[open][data-closing='true'] {
+		opacity: 0;
+		transform: scale(0.9);
+		filter: blur(4px);
+	}
+
 	dialog::backdrop {
 		background-color: var(--color-scrim);
+	}
+
+	dialog[open]::backdrop {
+		opacity: 1;
+		transition: opacity 250ms ease;
+	}
+
+	@starting-style {
+		dialog[open]::backdrop {
+			opacity: 0;
+		}
+	}
+
+	dialog[open][data-closing='true']::backdrop {
+		opacity: 0;
 	}
 
 	h2 {

@@ -5,6 +5,7 @@
 	import ConfirmDialog from '$components/molecules/ConfirmDialog.svelte';
 	import IconPlus from '@tabler/icons-svelte/icons/plus';
 	import IconTrash from '@tabler/icons-svelte/icons/trash';
+	import { popIn } from '../../lib/utils/transitions';
 
 	type Props = {
 		/** アカウント一覧 */
@@ -81,7 +82,7 @@
 		<Avatar src={active.avatarUrl} alt={active.name} size={35} />
 	</button>
 	{#if open}
-		<menu>
+		<menu transition:popIn>
 			{#each accounts as account (account.id)}
 				<li>
 					<AccountMenuItem
@@ -154,6 +155,7 @@
 		top: 100%;
 		right: 0;
 		z-index: 100;
+		transform-origin: top right;
 		margin: 5px 0;
 		border: 1px solid var(--color-outline-weak);
 		border-radius: 10px;

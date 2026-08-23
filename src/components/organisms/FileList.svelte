@@ -100,6 +100,7 @@
 <table>
 	<thead>
 		<tr>
+			<th scope="col" aria-label="選択"></th>
 			{#each COLUMNS as column (column.key)}
 				<th scope="col">
 					<button
@@ -170,7 +171,7 @@
 		{/each}
 		{#if folders.length === 0 && files.length === 0}
 			<tr>
-				<td colspan="3">{emptyMessage}</td>
+				<td colspan="4">{emptyMessage}</td>
 			</tr>
 		{/if}
 	</tbody>
@@ -189,11 +190,16 @@
 		text-align: left;
 	}
 
-	th:nth-child(2) {
-		inline-size: 180px;
+	/* 1列目はチェックボックス、2列目(名前)が残り幅を使う */
+	th:first-child {
+		inline-size: 35px;
 	}
 
 	th:nth-child(3) {
+		inline-size: 180px;
+	}
+
+	th:nth-child(4) {
 		inline-size: 140px;
 	}
 

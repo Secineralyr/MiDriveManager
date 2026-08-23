@@ -17,6 +17,7 @@
 	import { onMount } from 'svelte';
 	import { searchStore } from './lib/stores/search.svelte';
 	import { syncStore } from './lib/stores/sync.svelte';
+	import { themeStore } from './lib/stores/theme.svelte';
 
 	/** 表示する画面の種類 */
 	type Screen = 'loading' | 'wizard' | 'main';
@@ -68,10 +69,11 @@
 		wizardBusy = false;
 	};
 
-	/** 諸注意への同意とチュートリアル表示済みの状態を読み込む */
+	/** 諸注意への同意、チュートリアル表示済み、テーマの選択を読み込む */
 	const loadPreferences = async () => {
 		noticeAccepted = await getNoticeAccepted();
 		tutorialSeen = await getTutorialSeen();
+		await themeStore.load();
 	};
 
 	/** アカウント読み込みとMiAuthコールバック処理を行うアプリ初期化 */
@@ -208,18 +210,9 @@
 	<section>
 		<Spinner size={30} />
 	</section>
-{:else if screen === 'wizard' || activeAccount === null || !noticeAccepted}
-	<AccountWizard
-		{noticeAccepted}
-		onacceptnotice={handleAcceptNotice}
-		cancellable={activeAccount !== null && !wizardBusy}
-		busy={wizardBusy}
-		error={wizardError}
-		onstart={handleStartAuth}
-		oncancel={handleWizardCancel}
-	/>
 {:else}
-	<AppHeader
+	{#if activeAccount !== null && noticeAccepted}
+		<AppHeader
 		accounts={accountsStore.accounts}
 		active={activeAccount}
 		syncStatus={syncStore.status}
@@ -239,7 +232,20 @@
 			tutorialOpen = true;
 		}}
 	/>
-	<DrivePage account={activeAccount} />
+		<DrivePage account={activeAccount} />
+	{/if}
+	{#if screen === 'wizard' || activeAccount === null || !noticeAccepted}
+		<AccountWizard
+			overlay={activeAccount !== null && noticeAccepted}
+			{noticeAccepted}
+			onacceptnotice={handleAcceptNotice}
+			cancellable={activeAccount !== null && !wizardBusy}
+			busy={wizardBusy}
+			error={wizardError}
+			onstart={handleStartAuth}
+			oncancel={handleWizardCancel}
+		/>
+	{/if}
 {/if}
 
 <AppOverlays />

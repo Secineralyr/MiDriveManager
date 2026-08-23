@@ -175,12 +175,23 @@
 	const resetAreaDrag = () => {
 		fileDragDepth = 0;
 	};
+
+	/**
+	 * 一覧の余白(項目以外)のクリックで選択を解除する
+	 * @param event - マウスイベント
+	 */
+	const handleAreaClick = (event: MouseEvent) => {
+		if (event.target === event.currentTarget) {
+			onclearselection();
+		}
+	};
 </script>
 
 <div class="workspace">
 	<aside data-tour="tree">
 		<FolderTree {childrenMap} {currentFolderId} {onnavigate} {ondropitems} {ondropfiles} />
 	</aside>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -- 余白クリックでの選択解除は補助操作(Escキーでも解除できる) -->
 	<main
 		data-tour="list"
 		data-dropover={fileDragDepth > 0}
@@ -189,26 +200,33 @@
 		ondragover={handleAreaDragOver}
 		ondrop={handleAreaDrop}
 		ondropcapture={resetAreaDrag}
+		onclick={handleAreaClick}
 	>
-		<DriveToolbar
-			{breadcrumb}
-			{viewMode}
-			{onnavigate}
-			{onviewmode}
-			{oncreatefolder}
-			{onuploadfiles}
-			{searchQuery}
-			resultCount={folders.length + files.length}
-			{onclearsearch}
-		/>
-		{#if selectedKeys.length > 0}
-			<SelectionBar
-				count={selectedKeys.length}
-				ondownload={ondownloadselection}
-				ondelete={ondeleteselection}
-				onclear={onclearselection}
-			/>
-		{/if}
+		<!-- 選択中はツールバーの枠ごと選択バーに置き換え、一覧の位置がずれないようにする -->
+		<div>
+			{#if selectedKeys.length > 0}
+				<SelectionBar
+					count={selectedKeys.length}
+					ondownload={ondownloadselection}
+					ondelete={ondeleteselection}
+					onclear={onclearselection}
+				/>
+			{:else}
+				<DriveToolbar
+					{breadcrumb}
+					{viewMode}
+					{onnavigate}
+					{onviewmode}
+					{oncreatefolder}
+					{onuploadfiles}
+					{searchQuery}
+					resultCount={folders.length + files.length}
+					{onclearsearch}
+					ondropitems={ondropitems}
+					ondropfiles={ondropfiles}
+				/>
+			{/if}
+		</div>
 		{#if viewMode === 'list'}
 			<FileList
 				{folders}
@@ -241,6 +259,7 @@
 				ondropfilesinfolder={ondropfiles}
 				{onopenmenu}
 				{emptyMessage}
+				onbackgroundclick={onclearselection}
 			/>
 		{/if}
 	</main>
@@ -263,6 +282,8 @@
 		display: flex;
 		flex: 1;
 		min-height: 0;
+		/* 詳細パネルがスライドで右へはみ出す間、横スクロールを出さない */
+		overflow: hidden;
 	}
 
 	aside {
@@ -282,6 +303,16 @@
 		padding: 20px;
 		gap: 15px;
 		min-width: 0;
+		/* スクロールバーの出入りで幅が変わり、グリッドの列数が振動しないように常に領域を確保する */
+		scrollbar-gutter: stable;
+	}
+
+	/* ツールバーと選択バーの共通枠。どちらが出ても高さを揃える */
+	main > div:first-of-type {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		min-height: 40px;
 	}
 
 	main[data-dropover='true'] {

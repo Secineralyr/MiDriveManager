@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import type { ComponentProps } from 'svelte';
 import DetailsPanel from '$components/organisms/DetailsPanel.svelte';
+import { stubElementAnimate } from '../../animation-test-util';
 
 const sampleFile: FileRecord = {
 	accountId: 'a1',
@@ -38,6 +39,7 @@ const sampleFolder: FolderRecord = {
  * @returns 描画結果とコールバックのモック
  */
 const renderPanel = (props: Partial<ComponentProps<typeof DetailsPanel>> = {}) => {
+	stubElementAnimate();
 	const onclose = vi.fn<() => void>();
 	const onpreview = vi.fn<(file: FileRecord) => void>();
 	const onrename = vi.fn<() => void>();

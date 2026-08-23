@@ -122,6 +122,16 @@
 		flex-direction: column;
 	}
 
+	/* ルート直下の一覧にも階層の縦線を出す(深い階層はFolderTreeItem側で同じ見た目にする) */
+	nav > ul > li > ul {
+		margin: 0;
+		margin-left: 12px;
+		padding: 0;
+		padding-left: 8px;
+		border-left: 1px solid var(--color-outline-weak);
+		list-style: none;
+	}
+
 	div {
 		display: flex;
 		align-items: center;

@@ -3,11 +3,10 @@
 	import type { FolderRecord } from '../../lib/db/schema';
 	import IconButton from '$components/atoms/IconButton.svelte';
 	import IconFolderPlus from '@tabler/icons-svelte/icons/folder-plus';
-	import IconLayoutGrid from '@tabler/icons-svelte/icons/layout-grid';
-	import IconList from '@tabler/icons-svelte/icons/list';
 	import IconUpload from '@tabler/icons-svelte/icons/upload';
 	import IconX from '@tabler/icons-svelte/icons/x';
 	import type { ViewMode } from '../../lib/db/settings';
+	import ViewModeSwitch from '$components/molecules/ViewModeSwitch.svelte';
 
 	type Props = {
 		/** ルートから表示中フォルダまでの経路 */
@@ -28,6 +27,10 @@
 		resultCount?: number;
 		/** 検索解除時の処理 */
 		onclearsearch?: () => void;
+		/** パンくずのフォルダへの項目ドロップ時の処理 */
+		ondropitems?: (folderId: string | null) => void;
+		/** パンくずのフォルダへのOSファイルドロップ時の処理 */
+		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
 	};
 
 	let {
@@ -40,6 +43,8 @@
 		searchQuery = null,
 		resultCount = 0,
 		onclearsearch,
+		ondropitems,
+		ondropfiles,
 	}: Props = $props();
 
 	let fileInput = $state<HTMLInputElement | null>(null);
@@ -70,7 +75,7 @@
 
 <div data-tour="toolbar">
 	{#if searchQuery === null}
-		<Breadcrumbs items={breadcrumbItems} {onnavigate} />
+		<Breadcrumbs items={breadcrumbItems} {onnavigate} {ondropitems} {ondropfiles} />
 	{:else}
 		<p>
 			<span>「{searchQuery}」の検索結果: {resultCount}件</span>
@@ -89,24 +94,7 @@
 				<IconFolderPlus size={18} />
 			</IconButton>
 		{/if}
-		<IconButton
-			label="リスト表示"
-			active={viewMode === 'list'}
-			onclick={() => {
-				onviewmode('list');
-			}}
-		>
-			<IconList size={18} />
-		</IconButton>
-		<IconButton
-			label="グリッド表示"
-			active={viewMode === 'grid'}
-			onclick={() => {
-				onviewmode('grid');
-			}}
-		>
-			<IconLayoutGrid size={18} />
-		</IconButton>
+		<ViewModeSwitch {viewMode} onchange={onviewmode} />
 	</div>
 </div>
 

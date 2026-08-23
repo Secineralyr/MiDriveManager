@@ -29,6 +29,8 @@
 		onopenmenu?: (kind: 'file' | 'folder', id: string, position: { x: number; y: number }) => void;
 		/** 項目がない時の文言 */
 		emptyMessage?: string;
+		/** 余白(項目以外)のクリック時の処理 */
+		onbackgroundclick?: () => void;
 	};
 
 	let {
@@ -44,7 +46,18 @@
 		ondropfilesinfolder,
 		onopenmenu,
 		emptyMessage = 'このフォルダは空です',
+		onbackgroundclick,
 	}: Props = $props();
+
+	/**
+	 * カードの隙間のクリックで余白クリックとして通知する
+	 * @param event - マウスイベント
+	 */
+	const handleBackgroundClick = (event: MouseEvent) => {
+		if (event.target === event.currentTarget) {
+			onbackgroundclick?.();
+		}
+	};
 
 	/**
 	 * フォルダカードへのドロップ処理を作る
@@ -82,7 +95,8 @@
 {#if folders.length === 0 && files.length === 0}
 	<p>{emptyMessage}</p>
 {:else}
-	<ul>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -- 余白クリックでの選択解除は補助操作(Escキーでも解除できる) -->
+	<ul onclick={handleBackgroundClick}>
 		{#each folders as folder (folder.id)}
 			<li>
 				<FileGridCard
@@ -139,7 +153,8 @@
 		margin: 0;
 		padding: 0;
 		gap: 15px;
-		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		/* カードは固定幅にする(可変幅だと詳細パネルの開閉やそのアニメーション中に全カードがリサイズされてしまう) */
+		grid-template-columns: repeat(auto-fill, 160px);
 		list-style: none;
 	}
 
