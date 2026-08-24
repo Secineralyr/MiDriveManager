@@ -1,9 +1,11 @@
+import type { SortKey, SortOrder } from '../utils/drive-sort';
 import { listAccountFiles, listAccountFolders } from '../db/drive-cache';
+import { sortFiles, sortFolders } from '../utils/drive-sort';
 import type { DriveItem } from '../services/drive-actions';
 import type { SearchResult } from '../services/search';
 import { searchDrive } from '../services/search';
 
-/** 入力が止まってから検索を実行するまでの待ち時間(ミリ秒) */
+// 入力が止まってから検索を実行するまでの待ち時間
 const DEBOUNCE_MS = 250;
 
 /** 検索の状態 */
@@ -25,10 +27,10 @@ const state = $state<SearchState>({
 	loading: false,
 });
 
-/** 入力待ちのタイマー(なければnull) */
+// 入力待ちのタイマー
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** 実行中の検索を識別するトークン。後から開始した検索だけが結果を反映できる */
+// 実行中の検索を識別するトークン。後から開始した検索だけ結果を反映
 let runToken = 0;
 
 /** 入力待ちのタイマーを止める */
@@ -155,6 +157,26 @@ export const searchStore = {
 	/** 検索語と結果を消す */
 	clear() {
 		reset();
+	},
+
+	/**
+	 * 検索結果のフォルダを並び替えて返す
+	 * @param sortKey - 並び替えの基準
+	 * @param sortOrder - 並び替えの方向
+	 * @returns 並び替えたフォルダ(結果がなければ空)
+	 */
+	sortedFolders(sortKey: SortKey, sortOrder: SortOrder) {
+		return sortFolders(state.result?.folders ?? [], sortKey, sortOrder);
+	},
+
+	/**
+	 * 検索結果のファイルを並び替えて返す
+	 * @param sortKey - 並び替えの基準
+	 * @param sortOrder - 並び替えの方向
+	 * @returns 並び替えたファイル(結果がなければ空)
+	 */
+	sortedFiles(sortKey: SortKey, sortOrder: SortOrder) {
+		return sortFiles(state.result?.files ?? [], sortKey, sortOrder);
 	},
 
 	/**

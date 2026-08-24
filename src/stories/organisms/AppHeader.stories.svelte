@@ -92,3 +92,22 @@
 		onshowtutorial: () => {},
 	}}
 />
+
+<Story
+	name="スマートフォン(メニューはシート)"
+	args={{
+		accounts: [primaryAccount],
+		active: primaryAccount,
+		syncStatus: 'idle',
+		syncCount: 0,
+		onswitch: () => {},
+		onadd: () => {},
+		onremove: () => {},
+		onresync: () => {},
+		searchQuery: '',
+		onsearch: () => {},
+		onclearsearch: () => {},
+		onshowtutorial: () => {},
+		phone: true,
+	}}
+/>

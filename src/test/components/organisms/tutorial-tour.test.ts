@@ -1,19 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/svelte';
-import { TUTORIAL_STEPS } from '../../../lib/services/tutorial';
 import TutorialTour from '$components/organisms/TutorialTour.svelte';
 import { stubElementAnimate } from '../../animation-test-util';
 import { stubResizeObserver } from '../../resize-observer-test-util';
+import { tutorialSteps } from '../../../lib/services/tutorial';
 
 /**
  * 開いた状態のツアーを描画する
+ * @param extra - モードの指定(スマートフォン・タブレット)
  * @returns 閉じる操作のモック
  */
-const renderTour = () => {
+const renderTour = (
+	extra: {
+		/** スマートフォン表示かどうか */
+		phone?: boolean;
+		/** タブレット表示かどうか */
+		tablet?: boolean;
+	} = {},
+) => {
 	stubElementAnimate();
 	stubResizeObserver();
 	const onclose = vi.fn<() => void>();
-	render(TutorialTour, { props: { open: true, onclose } });
+	render(TutorialTour, { props: { open: true, onclose, ...extra } });
 	return { onclose };
 };
 
@@ -40,12 +48,20 @@ describe('チュートリアルツアー', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'スキップ' }));
 		expect(onclose).toHaveBeenCalledWith();
 
-		for (let stepIndex = 1; stepIndex < TUTORIAL_STEPS.length; stepIndex += 1) {
+		for (let stepIndex = 1; stepIndex < tutorialSteps('desktop').length; stepIndex += 1) {
 			// oxlint-disable-next-line eslint/no-await-in-loop - 歩を順に進める
 			await fireEvent.click(screen.getByRole('button', { name: '次へ' }));
 		}
 		await fireEvent.click(screen.getByRole('button', { name: '完了' }));
 		expect(onclose).toHaveBeenCalledTimes(2);
+	});
+
+	it('スマートフォンでは歩が5つになり、ツリー開閉ボタンとアカウントアイコンを対象にする', () => {
+		renderTour({ phone: true });
+		expect(screen.getByText('1 / 5')).toBeDefined();
+		expect(document.querySelector('[data-tour="tree-toggle"]')).not.toBeNull();
+		expect(document.querySelector('[data-tour="account"]')).not.toBeNull();
+		expect(document.querySelector('[data-tour="queue"]')).toBeNull();
 	});
 
 	it('閉じている時は何も表示しない', () => {

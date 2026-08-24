@@ -109,3 +109,20 @@
 		onpreviewfile: () => {},
 	}}
 />
+
+<Story
+	name="タッチ操作(選択モード)"
+	args={{
+		folders,
+		files,
+		sortKey: 'name',
+		sortOrder: 'asc',
+		selectedKeys: ['file:f1'],
+		touch: true,
+		selectMode: true,
+		onsort: () => {},
+		onselectitem: () => {},
+		onopenfolder: () => {},
+		onpreviewfile: () => {},
+	}}
+/>

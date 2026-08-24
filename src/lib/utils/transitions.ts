@@ -1,13 +1,12 @@
 import type { TransitionConfig } from 'svelte/transition';
 import { cubicOut } from 'svelte/easing';
 
-/** 出入りの時間(ミリ秒) */
 const DURATION_MS = 250;
 
-/** 縮小状態の倍率 */
+// 縮小倍率
 const START_SCALE = 0.9;
 
-/** 縮小状態のブラー量(px) */
+// 縮小ブラー量
 const START_BLUR_PX = 4;
 
 /**
@@ -29,6 +28,53 @@ export const popIn = (
 	easing: cubicOut,
 	css: (t, u) =>
 		`opacity: ${t}; transform: scale(${START_SCALE + (1 - START_SCALE) * t}); filter: blur(${u * START_BLUR_PX}px);`,
+});
+
+/**
+ * 行内の要素(チェックボックスなど)の出入りのトランジション
+ * フェードしながら占有する幅を0から広げ、隣の要素が横へ滑るように動く
+ * @param node - 対象の要素
+ * @param params - 隣との間隔の補正
+ * @returns トランジションの設定
+ */
+export const revealInline = (
+	node: Element,
+	params: {
+		/** 親のgap(px)。幅が0の間は負のmarginで打ち消す */
+		gap?: number;
+	} = {},
+): TransitionConfig => {
+	const { width } = node.getBoundingClientRect();
+	const gap = params.gap ?? 0;
+	return {
+		duration: DURATION_MS,
+		easing: cubicOut,
+		css: (t, u) => `opacity: ${t}; inline-size: ${t * width}px; margin-right: ${-u * gap}px;`,
+	};
+};
+
+/**
+ * 画面下部のシートの出入りのトランジション
+ * 下からスライドして現れ、下へスライドして消える
+ * @param _node - 対象の要素(使わない)
+ * @returns トランジションの設定
+ */
+export const sheetUp = (_node: Element): TransitionConfig => ({
+	duration: DURATION_MS,
+	easing: cubicOut,
+	css: (_t, u) => `transform: translateY(${u * 100}%);`,
+});
+
+/**
+ * 画面右端のドロワーの出入りのトランジション
+ * 右からスライドして現れ、右へスライドして消える
+ * @param _node - 対象の要素(使わない)
+ * @returns トランジションの設定
+ */
+export const sheetRight = (_node: Element): TransitionConfig => ({
+	duration: DURATION_MS,
+	easing: cubicOut,
+	css: (_t, u) => `transform: translateX(${u * 100}%);`,
 });
 
 /**

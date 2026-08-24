@@ -226,4 +226,17 @@
 		justify-content: center;
 		inline-size: 15px;
 	}
+
+	/* タッチ操作の端末: 指で押しやすいように項目を大きくする */
+	@media (pointer: coarse) {
+		menu {
+			min-width: 220px;
+		}
+
+		button {
+			padding: 12px 15px;
+			padding-left: 12px;
+			font-size: 1rem;
+		}
+	}
 </style>

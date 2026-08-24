@@ -2,7 +2,7 @@
 	import {
 		TUTORIAL_DRIVE,
 		TUTORIAL_SELECTED_FILE,
-		TUTORIAL_STEPS,
+		tutorialSteps,
 	} from '../../lib/services/tutorial';
 	import type { AccountRecord } from '../../lib/db/schema';
 	import AppHeader from '$components/organisms/AppHeader.svelte';
@@ -16,22 +16,21 @@
 	type Props = {
 		/** 表示するかどうか */
 		open: boolean;
+		/** スマートフォン表示かどうか(歩の内容とデモをスマートフォンのUIにする) */
+		phone?: boolean;
+		/** タブレット表示かどうか(歩の説明をタッチ操作にする) */
+		tablet?: boolean;
 		/** 閉じる操作(スキップまたは完了) */
 		onclose: () => void;
 	};
 
-	let { open, onclose }: Props = $props();
+	let { open, phone = false, tablet = false, onclose }: Props = $props();
 
-	/** ハイライトの周囲に付ける余白(px) */
 	const SPOTLIGHT_PADDING = 5;
 
-	/** 吹き出しとハイライトの間隔(px) */
 	const TOOLTIP_GAP = 15;
-
-	/** 吹き出しの幅(px) */
 	const TOOLTIP_WIDTH = 360;
 
-	/** デモに表示するアカウント */
 	const demoAccount: AccountRecord = {
 		id: 'tutorial',
 		host: 'misskey.example',
@@ -44,7 +43,6 @@
 		lastSyncedAt: null,
 	};
 
-	/** デモの進行カードに表示するタスク */
 	const demoTasks: QueueCardTask[] = [
 		{
 			id: 1,
@@ -64,8 +62,22 @@
 	let targetRect = $state<DOMRect | null>(null);
 	let tooltipHeight = $state(0);
 
-	const step = $derived(TUTORIAL_STEPS.at(index));
-	const isLast = $derived(index === TUTORIAL_STEPS.length - 1);
+	const steps = $derived.by(() => {
+		if (phone) {
+			return tutorialSteps('phone');
+		}
+
+		return tutorialSteps(tablet ? 'tablet' : 'desktop');
+	});
+
+	const step = $derived(steps.at(index));
+	const isLast = $derived(index === steps.length - 1);
+
+	/**
+	 * 吹き出しの幅を返す(狭い画面では画面内に収める)
+	 * @returns 幅(px)
+	 */
+	const tooltipWidth = () => Math.min(TOOLTIP_WIDTH, innerWidth - TOOLTIP_GAP * 2);
 
 	/** 現在の歩のハイライト対象を測り直す */
 	const measure = () => {
@@ -78,17 +90,19 @@
 		targetRect = element === null ? null : element.getBoundingClientRect();
 	};
 
-	/** ハイライトの範囲(余白込み。対象がなければ画面中央の点) */
+	// NOTE: 画面端の対象では負の位置になり、暗幕の幅が無効な値(負のwidth)として無視されて前の値が残ってしまうため、0未満にはしない
 	const spot = $derived.by(() => {
 		if (targetRect === null) {
 			return { top: innerHeight / 2, left: innerWidth / 2, width: 0, height: 0 };
 		}
 
+		const top = Math.max(0, targetRect.top - SPOTLIGHT_PADDING);
+		const left = Math.max(0, targetRect.left - SPOTLIGHT_PADDING);
 		return {
-			top: targetRect.top - SPOTLIGHT_PADDING,
-			left: targetRect.left - SPOTLIGHT_PADDING,
-			width: targetRect.width + SPOTLIGHT_PADDING * 2,
-			height: targetRect.height + SPOTLIGHT_PADDING * 2,
+			top,
+			left,
+			width: Math.max(0, targetRect.right + SPOTLIGHT_PADDING - left),
+			height: Math.max(0, targetRect.bottom + SPOTLIGHT_PADDING - top),
 		};
 	});
 
@@ -99,10 +113,10 @@
 	 */
 	const placeBeside = (area: { top: number; left: number; width: number; height: number }) => {
 		const rightX = area.left + area.width + TOOLTIP_GAP;
-		const fitsRight = rightX + TOOLTIP_WIDTH + TOOLTIP_GAP <= innerWidth;
+		const fitsRight = rightX + tooltipWidth() + TOOLTIP_GAP <= innerWidth;
 		return {
 			top: Math.max(TOOLTIP_GAP, area.top + TOOLTIP_GAP),
-			left: fitsRight ? rightX : Math.max(TOOLTIP_GAP, area.left - TOOLTIP_WIDTH - TOOLTIP_GAP),
+			left: fitsRight ? rightX : Math.max(TOOLTIP_GAP, area.left - tooltipWidth() - TOOLTIP_GAP),
 		};
 	};
 
@@ -118,13 +132,13 @@
 			top: fitsBelow ? below : Math.max(TOOLTIP_GAP, area.top - tooltipHeight - TOOLTIP_GAP),
 			left: Math.min(
 				Math.max(TOOLTIP_GAP, area.left),
-				Math.max(TOOLTIP_GAP, innerWidth - TOOLTIP_WIDTH - TOOLTIP_GAP),
+				Math.max(TOOLTIP_GAP, innerWidth - tooltipWidth() - TOOLTIP_GAP),
 			),
 		};
 	};
 
-	/** 吹き出しの表示位置(縦長の対象は横に、それ以外は上下に。対象へ重ねない) */
 	const tooltipPosition = $derived.by(() =>
+		// 縦長の対象は横に、それ以外は上下に。対象へ重ねない
 		spot.height > innerHeight / 2 ? placeBeside(spot) : placeVertical(spot),
 	);
 
@@ -150,8 +164,16 @@
 	});
 
 	$effect(() => {
+		// UIのモードが変わって歩の並びが差し替わったら、最初の歩からやり直す
+		void steps;
+		
+		index = 0;
+	});
+
+	$effect(() => {
 		// 歩が変わったら、描画とカードの出入りのトランジションが落ち着いてから測り直す
 		void index;
+
 		measure();
 		const timer = setTimeout(measure, 300);
 		return () => {
@@ -178,6 +200,8 @@
 				onsearch={() => {}}
 				onclearsearch={() => {}}
 				onshowtutorial={() => {}}
+				{phone}
+				queueStatus={phone ? 'running' : 'idle'}
 			/>
 			<DriveExplorer
 				childrenMap={demoChildrenMap}
@@ -190,7 +214,9 @@
 				sortOrder="asc"
 				selectedKeys={[]}
 				detailTarget={{ kind: 'file', file: TUTORIAL_SELECTED_FILE }}
-				detailsOpen={true}
+				detailsOpen={!phone}
+				{phone}
+				{tablet}
 				selectionSize={0}
 				onnavigate={() => {}}
 				onsort={() => {}}
@@ -214,12 +240,14 @@
 				searchQuery={null}
 				onclearsearch={() => {}}
 			/>
-			<QueueCard
-				tasks={demoTasks}
-				onretry={() => {}}
-				ondismiss={() => {}}
-				onclearfinished={() => {}}
-			/>
+			{#if !phone}
+				<QueueCard
+					tasks={demoTasks}
+					onretry={() => {}}
+					ondismiss={() => {}}
+					onclearfinished={() => {}}
+				/>
+			{/if}
 		</div>
 		<!-- ハイライト部分だけを空けた4枚の暗幕 -->
 		<div class="scrim" style:top="0" style:left="0" style:right="0" style:height="{spot.top}px"></div>
@@ -253,7 +281,7 @@
 			<h2>{step.title}</h2>
 			<p>{step.description}</p>
 			<footer>
-				<span>{index + 1} / {TUTORIAL_STEPS.length}</span>
+				<span>{index + 1} / {steps.length}</span>
 				<span>
 					{#if !isLast}
 						<Button variant="text" onclick={onclose}>スキップ</Button>
@@ -311,8 +339,9 @@
 		border: 1px solid var(--color-outline);
 		border-radius: 10px;
 		background-color: var(--color-surface);
-		min-width: 360px;
-		max-width: 360px;
+		/* 狭い画面では吹き出しを画面内に収める */
+		min-width: min(360px, calc(100vw - 30px));
+		max-width: min(360px, calc(100vw - 30px));
 		transition:
 			top 250ms ease,
 			left 250ms ease;

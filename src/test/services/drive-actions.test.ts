@@ -29,7 +29,7 @@ const makeApiFolder = (folder: {
 
 /**
  * APIレスポンス用のファイルエンティティを作る
- * @param file - ファイルのID・名前・コメント・センシティブ
+ * @param file - ファイルのID・名前・説明・センシティブ
  * @returns ファイルエンティティ
  */
 const makeApiFile = (file: {
@@ -137,7 +137,7 @@ describe('フォルダ作成とリネーム', () => {
 describe('メタデータ更新', () => {
 	beforeEach(resetDb);
 
-	it('コメントとセンシティブの更新がキャッシュへ反映される', async () => {
+	it('説明とセンシティブの更新がキャッシュへ反映される', async () => {
 		const record = await updateFileMetadata('a1', makeClient(), {
 			fileId: 'f1',
 			metadata: { comment: '説明', isSensitive: true },

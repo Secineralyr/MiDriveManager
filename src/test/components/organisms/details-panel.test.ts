@@ -74,7 +74,7 @@ describe('詳細パネルの表示', () => {
 		expect(screen.queryByText('がぞー.jpg')).not.toBeNull();
 		expect(screen.queryByText('image/jpeg')).not.toBeNull();
 		expect(screen.queryByText('1.5 MB')).not.toBeNull();
-		expect(screen.getByLabelText<HTMLTextAreaElement>('コメント(代替テキスト)').value).toBe(
+		expect(screen.getByLabelText<HTMLTextAreaElement>('説明').value).toBe(
 			'旅行で撮った写真',
 		);
 		expect(screen.getByLabelText<HTMLInputElement>('センシティブ').checked).toBe(false);
@@ -104,8 +104,8 @@ describe('メタデータの編集', () => {
 
 	it('編集すると保存ボタンが活性になる', async () => {
 		renderFilePanel();
-		await fireEvent.input(screen.getByLabelText('コメント(代替テキスト)'), {
-			target: { value: '別のコメント' },
+		await fireEvent.input(screen.getByLabelText('説明'), {
+			target: { value: '別の説明' },
 		});
 		const button = screen.getByRole('button', { name: 'メタデータを保存' });
 		expect(button.hasAttribute('disabled')).toBe(false);
@@ -115,20 +115,20 @@ describe('メタデータの編集', () => {
 describe('メタデータの保存', () => {
 	it('編集したメタデータが保存時に渡される', async () => {
 		const { onsavemetadata } = renderFilePanel();
-		await fireEvent.input(screen.getByLabelText('コメント(代替テキスト)'), {
-			target: { value: '新しいコメント' },
+		await fireEvent.input(screen.getByLabelText('説明'), {
+			target: { value: '新しい説明' },
 		});
 		await fireEvent.click(screen.getByLabelText('センシティブ'));
 		await fireEvent.click(screen.getByRole('button', { name: 'メタデータを保存' }));
 		expect(onsavemetadata).toHaveBeenCalledWith({
-			comment: '新しいコメント',
+			comment: '新しい説明',
 			isSensitive: true,
 		});
 	});
 
-	it('コメントを空にして保存するとnullで渡される', async () => {
+	it('説明を空にして保存するとnullで渡される', async () => {
 		const { onsavemetadata } = renderFilePanel();
-		await fireEvent.input(screen.getByLabelText('コメント(代替テキスト)'), {
+		await fireEvent.input(screen.getByLabelText('説明'), {
 			target: { value: '   ' },
 		});
 		await fireEvent.click(screen.getByRole('button', { name: 'メタデータを保存' }));

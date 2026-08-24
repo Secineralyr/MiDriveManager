@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
+	import ActionSheet from '$components/molecules/ActionSheet.svelte';
 	import { computeBreadcrumbLayout } from '../../lib/utils/breadcrumb-layout';
 	import { popIn } from '../../lib/utils/transitions';
 
@@ -19,9 +20,11 @@
 		ondropitems?: (folderId: string | null) => void;
 		/** 経路のフォルダへのOSファイルドロップ時の処理 */
 		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
+		/** スマートフォン表示かどうか(省略した項目の一覧を下から出るシートにする) */
+		phone?: boolean;
 	};
 
-	let { items, onnavigate, ondropitems, ondropfiles }: Props = $props();
+	let { items, onnavigate, ondropitems, ondropfiles, phone = false }: Props = $props();
 
 	/** ドロップ強調中の項目のキー(ルートは'root'、なければnull) */
 	let dropoverKey = $state<string | null>(null);
@@ -86,6 +89,9 @@
 	const hiddenItems = $derived(layout.collapsed ? items.slice(1, layout.tailStart) : []);
 	const tailItems = $derived(layout.collapsed ? items.slice(layout.tailStart) : items.slice(1));
 
+	/** シート用の省略項目 */
+	const sheetItems = $derived(hiddenItems.map((item) => ({ id: keyOf(item), label: item.name })));
+
 	/**
 	 * 経路の項目を選択して移動する
 	 * @param item - 選択された項目
@@ -96,11 +102,22 @@
 	};
 
 	/**
-	 * メニューの外側をポインタで押した時にメニューを閉じる
+	 * シートで選ばれた項目へ移動する
+	 * @param key - 選ばれた項目のキー
+	 */
+	const handleSheetSelect = (key: string) => {
+		const item = hiddenItems.find((candidate) => keyOf(candidate) === key);
+		if (item !== undefined) {
+			handleSelect(item);
+		}
+	};
+
+	/**
+	 * メニューの外側をポインタで押した時にメニューを閉じる(シート表示ではスクリムで閉じる)
 	 * @param event - ポインタイベント
 	 */
 	const handleOutsidePointer = (event: PointerEvent) => {
-		if (!menuOpen || menuContainer === null) {
+		if (!menuOpen || menuContainer === null || phone) {
 			return;
 		}
 		if (event.target instanceof Node && !menuContainer.contains(event.target)) {
@@ -173,7 +190,7 @@
 					…
 				</button>
 				<span aria-hidden="true">/</span>
-				{#if menuOpen}
+				{#if menuOpen && !phone}
 					<menu transition:popIn>
 						{#each hiddenItems as item (item.id ?? 'root')}
 							<li>
@@ -229,6 +246,18 @@
 	</ol>
 </nav>
 
+{#if phone}
+	<ActionSheet
+		open={menuOpen}
+		title="フォルダを選択"
+		items={sheetItems}
+		onselect={handleSheetSelect}
+		onclose={() => {
+			menuOpen = false;
+		}}
+	/>
+{/if}
+
 <style>
 	nav {
 		position: relative;
@@ -245,13 +274,20 @@
 		list-style: none;
 	}
 
+	/* 計測用の一覧は幅0に隠し、はみ出しがスクロール領域を広げないようにする(項目の幅は計測できる) */
 	ol[data-measure] {
 		position: absolute;
 		top: 0;
 		left: 0;
+		overflow: hidden;
+		inline-size: 0;
 		visibility: hidden;
 		pointer-events: none;
 		white-space: nowrap;
+	}
+
+	ol[data-measure] > li {
+		flex-shrink: 0;
 	}
 
 	ol[data-measure] li > span:first-child {
@@ -343,6 +379,14 @@
 	menu button:hover {
 		background-color: var(--color-surface-hover);
 		color: var(--color-text);
+	}
+
+	/* タッチ操作の端末: 省略項目のポップアップを指で押しやすい大きさにする */
+	@media (pointer: coarse) {
+		menu button {
+			padding: 12px;
+			font-size: 1.05rem;
+		}
 	}
 
 	button[data-dropover='true'],

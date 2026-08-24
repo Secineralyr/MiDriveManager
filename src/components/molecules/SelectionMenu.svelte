@@ -1,11 +1,25 @@
-<script lang="ts">
-	import type { MenuAction, MenuItem } from '../../lib/services/context-menu';
-	import ContextMenu from '$components/molecules/ContextMenu.svelte';
+<script module lang="ts">
 	import IconCopy from '@tabler/icons-svelte/icons/copy';
 	import IconCut from '@tabler/icons-svelte/icons/cut';
 	import IconDownload from '@tabler/icons-svelte/icons/download';
+	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
 	import IconPencil from '@tabler/icons-svelte/icons/pencil';
 	import IconTrash from '@tabler/icons-svelte/icons/trash';
+
+	// 選択項目の操作ごとのアイコン(右クリックメニューとスマートフォンのシートで共用)
+	export const ICONS = {
+		details: IconInfoCircle,
+		download: IconDownload,
+		copy: IconCopy,
+		cut: IconCut,
+		rename: IconPencil,
+		delete: IconTrash,
+	} as const;
+</script>
+
+<script lang="ts">
+	import type { MenuAction, MenuItem } from '../../lib/services/context-menu';
+	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 
 	type Props = {
 		/** 表示するかどうか */
@@ -23,15 +37,6 @@
 	};
 
 	let { open, x, y, items, onselect, onclose }: Props = $props();
-
-	/** 操作ごとのアイコン */
-	const ICONS = {
-		download: IconDownload,
-		copy: IconCopy,
-		cut: IconCut,
-		rename: IconPencil,
-		delete: IconTrash,
-	} as const;
 
 	const decorated = $derived(
 		items.map((item) => ({

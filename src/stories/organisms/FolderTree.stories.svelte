@@ -29,6 +29,15 @@
 		makeFolder('f6', 'アーカイブ', 'f4'),
 	]);
 
+	/** 10階層まで続く深いフォルダ構成(見切れ対策の確認用) */
+	const deepFolders: FolderRecord[] = [];
+	for (let level = 1; level <= 10; level += 1) {
+		deepFolders.push(
+			makeFolder(`deep${level}`, `${level}階層目のフォルダ`, level === 1 ? null : `deep${level - 1}`),
+		);
+	}
+	const deepChildrenMap = buildChildrenMap(deepFolders);
+
 	const { Story } = defineMeta({
 		title: 'organisms/FolderTree',
 		component: FolderTree,
@@ -41,3 +50,18 @@
 />
 
 <Story name="フォルダなし" args={{ childrenMap: {}, currentFolderId: null, onnavigate: () => {} }} />
+
+<Story
+	name="深い階層"
+	args={{ childrenMap: deepChildrenMap, currentFolderId: 'deep10', onnavigate: () => {} }}
+>
+	{#snippet template(args)}
+		<div style="max-width: 240px;">
+			<FolderTree
+				childrenMap={args.childrenMap}
+				currentFolderId={args.currentFolderId}
+				onnavigate={args.onnavigate}
+			/>
+		</div>
+	{/snippet}
+</Story>

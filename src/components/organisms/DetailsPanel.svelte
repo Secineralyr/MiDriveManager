@@ -19,14 +19,9 @@
 </script>
 
 <script lang="ts">
-	import { formatDateTime, formatFileSize } from '../../lib/utils/format';
-	import Button from '$components/atoms/Button.svelte';
-	import Checkbox from '$components/atoms/Checkbox.svelte';
-	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
+	import DetailsContent from '$components/organisms/DetailsContent.svelte';
 	import IconButton from '$components/atoms/IconButton.svelte';
-	import IconPencil from '@tabler/icons-svelte/icons/pencil';
 	import IconX from '@tabler/icons-svelte/icons/x';
-	import TextArea from '$components/atoms/TextArea.svelte';
 	import { slidePanel } from '../../lib/utils/transitions';
 
 	type Props = {
@@ -46,7 +41,7 @@
 		onrename: () => void;
 		/** メタデータ保存時の処理 */
 		onsavemetadata: (metadata: {
-			/** コメント(代替テキスト)。空欄はnull */
+			/** 説明(代替テキスト)。空欄はnull */
 			comment: string | null;
 			/** センシティブフラグ */
 			isSensitive: boolean;
@@ -64,36 +59,6 @@
 		onsavemetadata,
 	}: Props = $props();
 
-	let commentDraft = $state('');
-	let sensitiveDraft = $state(false);
-
-	$effect(() => {
-		if (target?.kind === 'file') {
-			commentDraft = target.file.comment ?? '';
-			sensitiveDraft = target.file.isSensitive;
-		}
-	});
-
-	const normalizedComment = $derived.by(() => {
-		const trimmed = commentDraft.trim();
-		return trimmed === '' ? null : trimmed;
-	});
-
-	const metadataDirty = $derived.by(() => {
-		if (target?.kind !== 'file') {
-			return false;
-		}
-
-		return (
-			normalizedComment !== target.file.comment ||
-			sensitiveDraft !== target.file.isSensitive
-		);
-	});
-
-	/** 編集中のメタデータを保存する */
-	const handleSave = () => {
-		onsavemetadata({ comment: normalizedComment, isSensitive: sensitiveDraft });
-	};
 	/** パネル幅の下限(px) */
 	const MIN_WIDTH = 240;
 
@@ -181,70 +146,15 @@
 			<IconX size={18} />
 		</IconButton>
 	</header>
-	{#if selectionCount > 1}
-		<p>{selectionCount}件選択中</p>
-		<dl>
-			<dt>合計サイズ(ファイルのみ)</dt>
-			<dd>{formatFileSize(selectionSize)}</dd>
-		</dl>
-	{:else if target?.kind === 'file'}
-		{#if target.file.thumbnailUrl !== null}
-			<button
-				type="button"
-				aria-label="プレビューを開く"
-				onclick={() => {
-					if (target?.kind === 'file') {
-						onpreview(target.file);
-					}
-				}}
-			>
-				<img src={target.file.thumbnailUrl} alt={target.file.name} />
-			</button>
-		{:else}
-			<span>
-				<FileTypeIcon mimeType={target.file.type} size={40} />
-			</span>
-		{/if}
-		<div>
-			<h3>{target.file.name}</h3>
-			<IconButton label="名前を変更" onclick={onrename}>
-				<IconPencil size={16} />
-			</IconButton>
-		</div>
-		<dl>
-			<dt>種類</dt>
-			<dd>{target.file.type}</dd>
-			<dt>サイズ</dt>
-			<dd>{formatFileSize(target.file.size)}</dd>
-			<dt>追加日</dt>
-			<dd>{formatDateTime(target.file.createdAt)}</dd>
-			<dt>URL</dt>
-			<dd><a href={target.file.url} target="_blank" rel="noopener noreferrer">開く</a></dd>
-		</dl>
-		<TextArea label="コメント(代替テキスト)" bind:value={commentDraft} />
-		<Checkbox label="センシティブ" bind:checked={sensitiveDraft} />
-		<Button variant="tonal" disabled={actionBusy || !metadataDirty} onclick={handleSave}>
-			メタデータを保存
-		</Button>
-	{:else if target?.kind === 'folder'}
-		<span>
-			<FileTypeIcon folder size={40} />
-		</span>
-		<div>
-			<h3>{target.folder.name}</h3>
-			<IconButton label="名前を変更" onclick={onrename}>
-				<IconPencil size={16} />
-			</IconButton>
-		</div>
-		<dl>
-			<dt>種類</dt>
-			<dd>フォルダ</dd>
-			<dt>追加日</dt>
-			<dd>{formatDateTime(target.folder.createdAt)}</dd>
-		</dl>
-	{:else}
-		<p>項目を選択すると詳細が表示されます</p>
-	{/if}
+	<DetailsContent
+		{target}
+		{selectionCount}
+		{selectionSize}
+		{actionBusy}
+		{onpreview}
+		{onrename}
+		{onsavemetadata}
+	/>
 </section>
 
 <style>
@@ -287,75 +197,15 @@
 		font-size: 1.15rem;
 	}
 
-	div {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 5px;
-	}
-
-	h3 {
-		margin: 0;
-		font-size: 1rem;
-		overflow-wrap: anywhere;
-	}
-
-	button {
-		padding: 0;
-		border: 0;
-		border-radius: 10px;
-		overflow: hidden;
-		background-color: transparent;
-		cursor: zoom-in;
-	}
-
-	button:focus-visible {
-		outline: 2px solid var(--color-focus);
-		outline-offset: 2px;
-	}
-
-	img {
-		display: block;
-		aspect-ratio: 16 / 9;
-		object-fit: cover;
-		inline-size: 100%;
-	}
-
-	span {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 10px;
-		padding: 30px;
-		background-color: var(--color-surface);
-		color: var(--color-text-muted);
-	}
-
-	p {
-		margin: 0;
-		color: var(--color-text-muted);
-	}
-
-	dl {
-		display: grid;
-		margin: 0;
-		gap: 5px;
-		grid-template-columns: auto 1fr;
-	}
-
-	dt {
-		font-size: 0.85rem;
-		color: var(--color-text-faint);
-	}
-
-	dd {
-		margin: 0;
-		font-size: 0.85rem;
-		overflow-wrap: anywhere;
-		color: var(--color-text);
-	}
-
-	a {
-		color: var(--color-text);
+	/* 中くらいの幅以下では、一覧を狭めずに右から重ねて表示する */
+	@media (max-width: 1024px) {
+		section {
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			z-index: 10;
+			background-color: var(--color-bg);
+		}
 	}
 </style>

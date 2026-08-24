@@ -23,4 +23,19 @@ describe('コンテキストメニューの項目', () => {
 		expect(items.map((item) => item.id)).toStrictEqual(['download', 'cut', 'rename', 'delete']);
 		expect(items.find((item) => item.id === 'rename')?.disabled).toBe(true);
 	});
+
+	it('detailsオプションで先頭に詳細が入り、複数選択では選べない', () => {
+		const single = buildSelectionMenu([{ kind: 'file', id: 'f1' }], { details: true });
+		expect(single[0]?.id).toBe('details');
+		expect(single[0]?.disabled).toBe(false);
+
+		const multiple = buildSelectionMenu(
+			[
+				{ kind: 'file', id: 'f1' },
+				{ kind: 'file', id: 'f2' },
+			],
+			{ details: true },
+		);
+		expect(multiple.find((item) => item.id === 'details')?.disabled).toBe(true);
+	});
 });

@@ -46,3 +46,29 @@
 		onremove: () => {},
 	}}
 />
+
+<Story
+	name="スマートフォン(シート表示)"
+	args={{
+		accounts,
+		active: primaryAccount,
+		onswitch: () => {},
+		onadd: () => {},
+		onremove: () => {},
+		phone: true,
+	}}
+/>
+
+<Story
+	name="スマートフォン(失敗の印付き)"
+	args={{
+		accounts,
+		active: primaryAccount,
+		onswitch: () => {},
+		onadd: () => {},
+		onremove: () => {},
+		phone: true,
+		indicator: 'failed',
+		onlongpress: () => {},
+	}}
+/>

@@ -34,3 +34,22 @@
 		</div>
 	{/snippet}
 </Story>
+
+<Story
+	name="タッチ操作の選択モード"
+	args={{
+		name: 'がぞー.jpg',
+		mimeType: 'image/jpeg',
+		thumbnailUrl: '/pwa-192x192.png',
+		selected: true,
+		touch: true,
+		selectMode: true,
+		onselect: () => {},
+	}}
+>
+	{#snippet template(args)}
+		<div style="max-width: 180px;">
+			<FileGridCard {...args} />
+		</div>
+	{/snippet}
+</Story>

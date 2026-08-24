@@ -23,6 +23,10 @@
 		ondropitems?: (folderId: string) => void;
 		/** このフォルダへのOSファイルドロップ時の処理 */
 		ondropfiles?: (folderId: string, transfer: DataTransfer) => void;
+		/** 階層の深さ(ルート直下が1) */
+		depth?: number;
+		/** これより深い階層はインデントを増やさない(タブレット・スマートフォンで幅が尽きないように) */
+		maxIndentDepth?: number;
 	};
 
 	let {
@@ -34,6 +38,8 @@
 		onselect,
 		ondropitems,
 		ondropfiles,
+		depth = 1,
+		maxIndentDepth = 6,
 	}: Props = $props();
 
 	let dropover = $state(false);
@@ -105,7 +111,7 @@
 		</button>
 	</div>
 	{#if isExpanded && children.length > 0}
-		<ul transition:slide={{ duration: 250 }}>
+		<ul transition:slide={{ duration: 250 }} data-deep={depth >= maxIndentDepth}>
 			{#each children as child (child.id)}
 				<FolderTreeItem
 					folder={child}
@@ -116,6 +122,8 @@
 					{onselect}
 					{ondropitems}
 					{ondropfiles}
+					depth={depth + 1}
+					{maxIndentDepth}
 				/>
 			{/each}
 		</ul>
@@ -201,5 +209,37 @@
 		padding-left: 8px;
 		border-left: 1px solid var(--color-outline-weak);
 		list-style: none;
+	}
+
+	/* タッチ端末と狭い画面: インデントを浅くし、一定の深さより下はインデントを増やさない(幅が尽きて見切れないように) */
+	@media (pointer: coarse), (max-width: 640px) {
+		ul {
+			margin-left: 6px;
+			padding-left: 6px;
+		}
+
+		ul[data-deep='true'] {
+			margin-left: 0;
+			padding-left: 0;
+			border-left: 0;
+		}
+	}
+
+	/* タッチ操作の端末: 行と展開ボタンを大きくして指で操作しやすくする */
+	@media (pointer: coarse) {
+		div {
+			padding: 6px 10px;
+			gap: 8px;
+		}
+
+		div > button:first-child,
+		div > span {
+			min-width: 28px;
+			min-height: 28px;
+		}
+
+		div > button:last-child {
+			font-size: 1.05rem;
+		}
 	}
 </style>

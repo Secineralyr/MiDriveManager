@@ -73,25 +73,56 @@
 	box-sizing: border-box;
 }
 
+/* ページ自体はスクロールさせない(端でのバウンスも禁止)。スクロールは一覧などの内側で行う */
 html {
+	height: 100%;
 	font-size: 14px;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	-webkit-text-size-adjust: 100%;
 	text-rendering: optimizeLegibility;
+	overscroll-behavior: none;
 }
 
 body {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	overflow: hidden;
 	margin: 0;
 	background-color: var(--color-bg);
 	font-family: var(--font-base);
 	font-size: 1rem;
 	line-height: 1.5;
 	color: var(--color-text);
+	/* アプリらしく、テキストや画像の長押し(選択やコールアウト)は出さない。入力欄だけは選択できる */
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+	overscroll-behavior: none;
 }
 
+input,
+textarea {
+	-webkit-user-select: text;
+	user-select: text;
+}
+
+/* 画像は長押しのコールアウトやドラッグの複製を出さない(アイコンやサムネイルの長押しをアプリの操作に使うため) */
+img {
+	-webkit-user-drag: none;
+	-webkit-touch-callout: none;
+	user-select: none;
+}
+
+/* ノッチやステータスバーの領域(セーフエリア)を避ける。下端は画面下部の固定UIがそれぞれ考慮する */
 #app {
 	display: flex;
 	flex-direction: column;
-	min-height: 100dvh;
+	height: 100%;
+	padding-top: env(safe-area-inset-top);
+	padding-right: env(safe-area-inset-right);
+	padding-left: env(safe-area-inset-left);
 }

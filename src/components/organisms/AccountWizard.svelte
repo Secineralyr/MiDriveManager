@@ -109,6 +109,7 @@
 		align-items: center;
 		justify-content: center;
 		flex: 1;
+		overflow-y: auto;
 		padding: 20px;
 	}
 
@@ -180,6 +181,19 @@
 	form > div {
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
 		gap: 10px;
+	}
+
+	/* スマートフォン: カードの余白を詰め、ボタンは縦に並べて全幅にする(横並びだとカードからはみ出すため) */
+	@media (max-width: 640px) {
+		section > div {
+			padding: 20px;
+		}
+
+		form > div {
+			flex-direction: column;
+			align-items: stretch;
+		}
 	}
 </style>

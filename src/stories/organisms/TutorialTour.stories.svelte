@@ -9,3 +9,7 @@
 </script>
 
 <Story name="ツアー" args={{ open: true, onclose: () => {} }} />
+
+<Story name="タブレットのツアー" args={{ open: true, tablet: true, onclose: () => {} }} />
+
+<Story name="スマートフォンのツアー" args={{ open: true, phone: true, onclose: () => {} }} />

@@ -10,19 +10,18 @@
 		parseSelectionKey,
 		selectionStore,
 	} from '../../lib/stores/selection.svelte';
-	import { sortFiles, sortFolders } from '../../lib/utils/drive-sort';
 	import DriveActionDialogs from '$components/organisms/DriveActionDialogs.svelte';
 	import DriveExplorer from '$components/organisms/DriveExplorer.svelte';
-	import type { MenuAction } from '../../lib/services/context-menu';
 	import PreviewModal from '$components/organisms/PreviewModal.svelte';
-	import SelectionMenu from '$components/molecules/SelectionMenu.svelte';
-	import { buildSelectionMenu } from '../../lib/services/context-menu';
+	import SelectionOverlays from '$components/organisms/SelectionOverlays.svelte';
+	import { createDriveDrag } from '../../lib/stores/drive-drag';
 	import { createDriveShortcuts } from '../../lib/stores/drive-shortcuts';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	import { driveStore } from '../../lib/stores/drive.svelte';
 	import { driveTasks } from '../../lib/stores/drive-tasks';
 	import { searchStore } from '../../lib/stores/search.svelte';
 	import { syncStore } from '../../lib/stores/sync.svelte';
+	import { viewportStore } from '../../lib/stores/viewport.svelte';
 
 	type Props = {
 		/** 表示するアカウント */
@@ -36,20 +35,39 @@
 	let createOpen = $state(false);
 	let renameOpen = $state(false);
 	let deleteOpen = $state(false);
-	let draggedKeys = $state<string[]>([]);
 	let menuPosition = $state<{ x: number; y: number } | null>(null);
+	let selectMode = $state(false);
+	let detailsSheetOpen = $state(false);
+	let moveOpen = $state(false);
+
+	const phone = $derived(viewportStore.phone);
+	const tablet = $derived(viewportStore.tablet);
+
+	const touch = $derived(phone || tablet);
+
+	const detailsPanelOpen = $derived.by(() => {
+		if (phone) {
+			return false;
+		}
+
+		if (tablet) {
+			return detailsSheetOpen;
+		}
+
+		return effectiveKeys.length > 0 && !detailsClosed;
+	});
 
 	// 検索中は検索結果、それ以外は表示中フォルダの内容を一覧に出す(並び替えは共通)
 	const searchResult = $derived(searchStore.active ? searchStore.result : null);
 	const visibleFolders = $derived(
 		searchResult === null
 			? driveStore.childFolders
-			: sortFolders(searchResult.folders, driveStore.sortKey, driveStore.sortOrder),
+			: searchStore.sortedFolders(driveStore.sortKey, driveStore.sortOrder),
 	);
 	const visibleFiles = $derived(
 		searchResult === null
 			? driveStore.files
-			: sortFiles(searchResult.files, driveStore.sortKey, driveStore.sortOrder),
+			: searchStore.sortedFiles(driveStore.sortKey, driveStore.sortOrder),
 	);
 
 	const orderedKeys = $derived([
@@ -77,13 +95,22 @@
 	const renameInitial = $derived(detailTargetName(detailTarget));
 	const renameItem = $derived(detailTargetItem(detailTarget));
 	const deleteTargets = $derived(effectiveKeys.map((key) => parseSelectionKey(key)));
-	const menuItems = $derived(buildSelectionMenu(deleteTargets));
+
+	const sheetTitle = $derived(
+		effectiveKeys.length === 1 ? detailTargetName(detailTarget) : `${effectiveKeys.length}件選択`,
+	);
 
 	const shortcuts = createDriveShortcuts({
 		account: () => account,
 		orderedKeys: () => orderedKeys,
 		effectiveKeys: () => effectiveKeys,
-		blocked: () => createOpen || renameOpen || deleteOpen || previewFile !== null,
+		blocked: () =>
+			createOpen ||
+			renameOpen ||
+			deleteOpen ||
+			previewFile !== null ||
+			detailsSheetOpen ||
+			moveOpen,
 		openDelete: () => {
 			deleteOpen = true;
 		},
@@ -97,7 +124,7 @@
 	 * @param metadata - 更新するメタデータ
 	 */
 	const handleSaveMetadata = (metadata: {
-		/** コメント(代替テキスト)。空欄はnull */
+		/** 説明(代替テキスト)。空欄はnull */
 		comment: string | null;
 		/** センシティブフラグ */
 		isSensitive: boolean;
@@ -119,24 +146,35 @@
 		}
 	};
 
-	/**
-	 * 項目のドラッグ開始(未選択の項目はその項目だけを選択してから開始する)
-	 * @param kind - 項目の種別
-	 * @param id - 項目のID
-	 */
-	const handleDragStartItem = (kind: 'file' | 'folder', id: string) => {
-		selectIfUnselected(kind, id);
-		draggedKeys = [...selectionStore.keys];
-	};
+	const drag = createDriveDrag({
+		selectItem: selectIfUnselected,
+		selectedKeys: () => selectionStore.keys,
+		isMenuOpen: () => menuPosition !== null,
+		closeMenu: () => {
+			menuPosition = null;
+		},
+		moveItems: (items, targetFolderId) => {
+			driveTasks.moveItems(account, { items, targetFolderId });
+		},
+		clearSelection: () => {
+			selectionStore.clear();
+		},
+	});
 
 	/**
-	 * 右クリックされた項目を選択してコンテキストメニューを開く
+	 * 右クリック(長押し)された項目を選択してコンテキストメニューを開く
+	 * タブレットでは合わせて詳細パネルも開く
 	 * @param kind - 項目の種別
 	 * @param id - 項目のID
 	 * @param position - 表示位置
 	 */
 	const handleOpenMenu = (kind: 'file' | 'folder', id: string, position: { x: number; y: number }) => {
 		selectIfUnselected(kind, id);
+		
+		if (tablet) {
+			detailsSheetOpen = true;
+		}
+		
 		menuPosition = position;
 	};
 
@@ -145,31 +183,31 @@
 		driveTasks.download(account, deleteTargets);
 	};
 
-	/**
-	 * コンテキストメニューの操作を実行する
-	 * @param action - 選ばれた操作
-	 */
-	const handleMenuSelect = (action: MenuAction) => {
-		if (action === 'download') {
-			downloadSelection();
-		} else {
-			shortcuts.run(action);
-		}
+	/** 選択モードを切り替える(切り替え時に選択は解除する) */
+	const toggleSelectMode = () => {
+		selectionStore.clear();
+		selectMode = !selectMode;
 	};
 
 	/**
-	 * ドラッグ中の項目のフォルダへの移動を操作キューへ積む
+	 * 選択中の項目の移動を操作キューへ積む(移動先シートを閉じ、選択モードも終了する)
 	 * @param targetFolderId - 移動先のフォルダID(ルートはnull)
 	 */
-	const handleDropItems = (targetFolderId: string | null) => {
-		const items = draggedKeys.map((key) => parseSelectionKey(key));
-		draggedKeys = [];
-		if (items.length === 0) {
-			return;
-		}
-
-		driveTasks.moveItems(account, { items, targetFolderId });
+	const handleMoveSelection = (targetFolderId: string | null) => {
+		moveOpen = false;
+		driveTasks.moveItems(account, { items: deleteTargets, targetFolderId });
 		selectionStore.clear();
+		selectMode = false;
+	};
+
+	/**
+	 * プレビュー中のファイルの詳細シートを開く(プレビューは閉じ、対象を選択状態にする)
+	 * @param file - 対象のファイル
+	 */
+	const handlePreviewDetails = (file: FileRecord) => {
+		previewFile = null;
+		selectIfUnselected('file', file.id);
+		detailsSheetOpen = true;
 	};
 
 	/**
@@ -190,12 +228,13 @@
 	};
 
 	/**
-	 * フォルダへ移動する(選択と検索は解除する)
+	 * フォルダへ移動する(選択と検索、選択モードは解除する)
 	 * @param folderId - 移動先のフォルダID(ルートはnull)
 	 */
 	const handleNavigate = (folderId: string | null) => {
 		selectionStore.clear();
 		searchStore.clear();
+		selectMode = false;
 		driveStore.openFolder(folderId);
 	};
 
@@ -217,6 +256,10 @@
 		searchStore.setAccount(account.id);
 		if (driveStore.accountId !== account.id) {
 			selectionStore.clear();
+			selectMode = false;
+			detailsSheetOpen = false;
+			moveOpen = false;
+			menuPosition = null;
 			driveStore.openAccount(account.id);
 		}
 	});
@@ -239,7 +282,13 @@
 	});
 </script>
 
-<svelte:window onkeydown={shortcuts.handleKeydown} onpaste={shortcuts.handlePaste} />
+<svelte:window
+	onkeydown={shortcuts.handleKeydown}
+	onpaste={shortcuts.handlePaste}
+	ondragstart={drag.beginTrack}
+	ondrag={drag.track}
+	ondragover={drag.track}
+/>
 
 <DriveExplorer
 	childrenMap={driveStore.childrenMap}
@@ -252,7 +301,7 @@
 	sortOrder={driveStore.sortOrder}
 	selectedKeys={effectiveKeys}
 	{detailTarget}
-	detailsOpen={effectiveKeys.length > 0 && !detailsClosed}
+	detailsOpen={detailsPanelOpen}
 	{selectionSize}
 	onnavigate={handleNavigate}
 	onsort={(key) => {
@@ -267,6 +316,7 @@
 	}}
 	onclosedetails={() => {
 		detailsClosed = true;
+		detailsSheetOpen = false;
 	}}
 	onpreviewfile={(file) => {
 		previewFile = file;
@@ -282,11 +332,9 @@
 		deleteOpen = true;
 	}}
 	actionBusy={driveActionsStore.busy}
-	ondragstartitem={handleDragStartItem}
-	ondragenditem={() => {
-		draggedKeys = [];
-	}}
-	ondropitems={handleDropItems}
+	ondragstartitem={drag.startItem}
+	ondragenditem={drag.end}
+	ondropitems={drag.drop}
 	ondropfiles={handleDropFiles}
 	onuploadfiles={handleUploadFiles}
 	ondownloadselection={downloadSelection}
@@ -295,17 +343,56 @@
 	onclearsearch={() => {
 		searchStore.clear();
 	}}
+	{phone}
+	{tablet}
+	{selectMode}
+	ontoggleselectmode={toggleSelectMode}
+	onmoveselection={() => {
+		moveOpen = true;
+	}}
 />
 
-<SelectionMenu
-	open={menuPosition !== null}
-	x={menuPosition?.x ?? 0}
-	y={menuPosition?.y ?? 0}
-	items={menuItems}
-	onselect={handleMenuSelect}
-	onclose={() => {
+<SelectionOverlays
+	{phone}
+	detailsAction={touch}
+	{menuPosition}
+	targets={deleteTargets}
+	title={sheetTitle}
+	onclosemenu={() => {
 		menuPosition = null;
 	}}
+	onaction={(action) => {
+		if (action === 'download') {
+			downloadSelection();
+		} else if (action === 'details') {
+			detailsSheetOpen = true;
+		} else {
+			shortcuts.run(action);
+		}
+	}}
+	detailsOpen={detailsSheetOpen}
+	{detailTarget}
+	selectionCount={effectiveKeys.length}
+	{selectionSize}
+	actionBusy={driveActionsStore.busy}
+	onclosedetails={() => {
+		detailsSheetOpen = false;
+	}}
+	onpreview={(file) => {
+		detailsSheetOpen = false;
+		previewFile = file;
+	}}
+	onrename={() => {
+		renameOpen = true;
+	}}
+	onsavemetadata={handleSaveMetadata}
+	{moveOpen}
+	childrenMap={driveStore.childrenMap}
+	currentFolderId={driveStore.currentFolderId}
+	onclosemove={() => {
+		moveOpen = false;
+	}}
+	onmove={handleMoveSelection}
 />
 
 <DriveActionDialogs
@@ -326,4 +413,5 @@
 	ondownload={(file) => {
 		driveTasks.download(account, [{ kind: 'file', id: file.id }]);
 	}}
+	ondetails={phone ? handlePreviewDetails : undefined}
 />

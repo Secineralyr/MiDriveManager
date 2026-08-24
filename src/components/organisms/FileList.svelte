@@ -18,6 +18,10 @@
 		sortOrder: SortOrder;
 		/** 選択中の選択キー一覧 */
 		selectedKeys: string[];
+		/** タッチ操作かどうか(タブレット。タップで開き、長押しでメニューを出す) */
+		touch?: boolean;
+		/** 選択モード中かどうか(タッチ操作用) */
+		selectMode?: boolean;
 		/** 並び替え変更時の処理 */
 		onsort: (key: SortKey) => void;
 		/** 項目が選択された時の処理 */
@@ -46,6 +50,8 @@
 		sortKey,
 		sortOrder,
 		selectedKeys,
+		touch = false,
+		selectMode = false,
 		onsort,
 		onselectitem,
 		onopenfolder,
@@ -100,7 +106,7 @@
 <table>
 	<thead>
 		<tr>
-			<th scope="col" aria-label="選択"></th>
+			<th scope="col" aria-label="選択" data-hidden={touch && !selectMode}></th>
 			{#each COLUMNS as column (column.key)}
 				<th scope="col">
 					<button
@@ -130,6 +136,8 @@
 				createdAt={folder.createdAt}
 				size={null}
 				selected={selectedKeys.includes(makeSelectionKey('folder', folder.id))}
+				{touch}
+				{selectMode}
 				onselect={(modifiers) => {
 					onselectitem('folder', folder.id, modifiers);
 				}}
@@ -154,6 +162,8 @@
 				size={file.size}
 				mimeType={file.type}
 				selected={selectedKeys.includes(makeSelectionKey('file', file.id))}
+				{touch}
+				{selectMode}
 				onselect={(modifiers) => {
 					onselectitem('file', file.id, modifiers);
 				}}
@@ -193,6 +203,10 @@
 	/* 1列目はチェックボックス、2列目(名前)が残り幅を使う */
 	th:first-child {
 		inline-size: 35px;
+	}
+
+	th[data-hidden='true'] {
+		display: none;
 	}
 
 	th:nth-child(3) {

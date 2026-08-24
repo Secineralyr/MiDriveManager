@@ -53,6 +53,13 @@
 		outline-offset: -2px;
 	}
 
+	/* タッチ操作の端末: 指で押しやすいように行を大きくする */
+	@media (pointer: coarse) {
+		button {
+			padding: 12px 10px;
+		}
+	}
+
 	span {
 		display: flex;
 		flex: 1;

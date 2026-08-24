@@ -145,7 +145,7 @@ export const driveActionsStore = {
 	},
 
 	/**
-	 * ファイルのメタデータ(コメント・センシティブ)を更新する
+	 * ファイルのメタデータ(説明・センシティブ)を更新する
 	 * @param account - 対象アカウント
 	 * @param input - 対象のファイルIDと更新するメタデータ
 	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)

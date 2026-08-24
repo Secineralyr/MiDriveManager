@@ -65,7 +65,7 @@ export const normalizeForSearch = normalizeForSearchInternal;
 
 /**
  * キャッシュ上のフォルダ・ファイルを検索語で絞り込む
- * フォルダは名前、ファイルは名前とコメントを対象に、空白区切りの語をすべて含むものを返す
+ * フォルダは名前、ファイルは名前と説明を対象に、空白区切りの語をすべて含むものを返す
  * @param input - 検索語と検索対象
  * @returns 検索結果(検索語が空なら空の結果)
  */

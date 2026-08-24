@@ -21,7 +21,7 @@ const makeFolder = (id: string, name: string): FolderRecord => ({
  * テスト用のファイルを作る
  * @param id - ファイルID
  * @param name - ファイル名
- * @param comment - コメント
+ * @param comment - 説明
  * @returns ファイルキャッシュレコード
  */
 const makeFile = (id: string, name: string, comment: string | null): FileRecord => ({
@@ -64,7 +64,7 @@ describe('ドライブの検索', () => {
 		expect(result.files.map((file) => file.id)).toStrictEqual(['f1']);
 	});
 
-	it('ファイルはコメントも対象になり、空白区切りの語はすべて含む必要がある', () => {
+	it('ファイルは説明も対象になり、空白区切りの語はすべて含む必要がある', () => {
 		expect(
 			searchDrive({ query: '写真 海', folders, files }).files.map((file) => file.id),
 		).toStrictEqual(['f3']);

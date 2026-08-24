@@ -104,6 +104,9 @@ export type ProgressReporter = ProgressReporterShape;
 /** キューに積まれたタスク */
 export type QueueTask = QueueTaskShape;
 
+/** 進行状況の要約 */
+export type QueueSummary = 'idle' | 'running' | 'failed';
+
 /** 操作キュー(アップロード・ダウンロード・一括操作を直列に実行する)を管理するストア */
 export const queueStore = {
 	/**
@@ -121,6 +124,18 @@ export const queueStore = {
 	get activeCount() {
 		return state.tasks.filter((task) => task.status === 'pending' || task.status === 'running')
 			.length;
+	},
+
+	/**
+	 * 進行状況の要約(未完了があればrunning、なければ失敗があればfailed、それ以外はidle)
+	 * @returns 要約
+	 */
+	get summary(): QueueSummary {
+		if (state.tasks.some((task) => task.status === 'pending' || task.status === 'running')) {
+			return 'running';
+		}
+
+		return state.tasks.some((task) => task.status === 'failed') ? 'failed' : 'idle';
 	},
 
 	/**

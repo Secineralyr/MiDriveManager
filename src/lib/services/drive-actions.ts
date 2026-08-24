@@ -30,7 +30,7 @@ type DriveItemShape = {
 
 /** ファイルのメタデータ編集の内容 */
 type FileMetadataShape = {
-	/** コメント(代替テキスト)。nullで未設定 */
+	/** 説明(代替テキスト)。nullで未設定 */
 	comment: string | null;
 	/** センシティブフラグ */
 	isSensitive: boolean;
@@ -183,7 +183,7 @@ export const renameFolder = async (
 };
 
 /**
- * ファイルのメタデータ(コメント・センシティブ)を更新してキャッシュへ反映する
+ * ファイルのメタデータ(説明・センシティブ)を更新してキャッシュへ反映する
  * @param accountId - 対象アカウントのアプリ内ID
  * @param client - APIクライアント
  * @param input - 対象のファイルIDと更新するメタデータ

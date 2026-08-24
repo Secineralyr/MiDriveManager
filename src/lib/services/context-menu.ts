@@ -1,7 +1,7 @@
 import type { DriveItem } from './drive-actions';
 
 /** コンテキストメニューの操作 */
-type MenuActionShape = 'download' | 'copy' | 'cut' | 'rename' | 'delete';
+type MenuActionShape = 'details' | 'download' | 'copy' | 'cut' | 'rename' | 'delete';
 
 /** コンテキストメニューの項目 */
 type MenuItemShape = {
@@ -25,12 +25,24 @@ export type MenuItem = MenuItemShape;
  * 選択中の項目に応じたコンテキストメニューの項目を組み立てる
  * フォルダを含む場合はコピー(複製)を出さず、名前の変更は1件選択の時だけ選べる
  * @param items - 選択中の項目
+ * @param options - 追加項目の指定
  * @returns メニューの項目
  */
-export const buildSelectionMenu = (items: DriveItem[]): MenuItem[] => {
+export const buildSelectionMenu = (
+	items: DriveItem[],
+	options: {
+		/** 詳細の項目を先頭に含めるかどうか(スマートフォンのシート用。1件選択の時だけ選べる) */
+		details?: boolean;
+	} = {},
+): MenuItem[] => {
 	const hasFolder = items.some((item) => item.kind === 'folder');
+	const details: MenuItem[] =
+		options.details === true
+			? [{ id: 'details', label: '詳細', disabled: items.length !== 1 }]
+			: [];
 	const copy: MenuItem[] = hasFolder ? [] : [{ id: 'copy', label: 'コピー' }];
 	return [
+		...details,
 		{ id: 'download', label: 'ダウンロード' },
 		...copy,
 		{ id: 'cut', label: '切り取り' },

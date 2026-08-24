@@ -2,11 +2,13 @@
 	import type { FileRecord } from '../../lib/db/schema';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import IconDownload from '@tabler/icons-svelte/icons/download';
+	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
 	import IconX from '@tabler/icons-svelte/icons/x';
 	import Spinner from '$components/atoms/Spinner.svelte';
 	import { createDialogCloser } from '../../lib/utils/dialog-close.svelte';
 	import { fileKind } from '../../lib/utils/file-kind';
 	import { formatFileSize } from '../../lib/utils/format';
+	import { pinchZoom } from '../../lib/utils/pinch-zoom';
 
 	type Props = {
 		/** プレビューするファイル(閉じている時はnull) */
@@ -15,12 +17,16 @@
 		onclose: () => void;
 		/** ダウンロード操作(指定した場合だけボタンを表示する) */
 		ondownload?: (file: FileRecord) => void;
+		/** 詳細を開く操作(指定した場合だけボタンを表示する) */
+		ondetails?: (file: FileRecord) => void;
 	};
 
-	let { file, onclose, ondownload }: Props = $props();
+	let { file, onclose, ondownload, ondetails }: Props = $props();
 
 	let dialog = $state<HTMLDialogElement | null>(null);
 	let mediaLoading = $state(false);
+
+	let image = $state<HTMLImageElement | null>(null);
 
 	const kind = $derived(file === null ? 'other' : fileKind(file.type));
 
@@ -86,6 +92,17 @@
 			</button>
 			<h2>{file.name}</h2>
 			<span>{file.type} / {formatFileSize(file.size)}</span>
+			{#if ondetails !== undefined}
+				<button
+					type="button"
+					aria-label="詳細"
+					onclick={() => {
+						ondetails(file);
+					}}
+				>
+					<IconInfoCircle size={20} />
+				</button>
+			{/if}
 			{#if ondownload !== undefined}
 				<button
 					type="button"
@@ -98,7 +115,8 @@
 				</button>
 			{/if}
 		</header>
-		<div data-close-target>
+		<!-- svelte-ignore a11y_autofocus, a11y_no_noninteractive_tabindex -- 開いた直後のフォーカスを閉じるボタンでなく表示領域に置き、閉じるボタンにフォーカス枠が出っぱなしにならないようにする -->
+		<div data-close-target tabindex="-1" autofocus use:pinchZoom={image}>
 			{#if mediaLoading}
 				<span data-loading>
 					<Spinner size={30} />
@@ -107,6 +125,7 @@
 			{/if}
 			{#if kind === 'image'}
 				<img
+					bind:this={image}
 					src={file.url}
 					alt={file.name}
 					data-mediaready={!mediaLoading}
@@ -237,6 +256,21 @@
 		overflow: hidden;
 		padding: 20px;
 		min-height: 0;
+	}
+
+	/* 表示領域は初期フォーカスの置き場なので枠を出さない。ピンチやドラッグを自前で扱うためブラウザのタッチ操作は止める */
+	div {
+		touch-action: none;
+	}
+
+	div:focus,
+	div:focus-visible {
+		outline: none;
+	}
+
+	/* 拡大縮小は表示領域の中心を基準にする */
+	img {
+		transform-origin: center;
 	}
 
 	img,

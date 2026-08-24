@@ -38,3 +38,14 @@
 		</div>
 	{/snippet}
 </Story>
+
+<Story
+	name="スマートフォン(省略はシート)"
+	args={{ items: longItems, onnavigate: () => {}, phone: true }}
+>
+	{#snippet template(args)}
+		<div style="max-width: 320px;">
+			<Breadcrumbs items={args.items} onnavigate={args.onnavigate} phone={args.phone} />
+		</div>
+	{/snippet}
+</Story>

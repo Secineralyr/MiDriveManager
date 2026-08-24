@@ -2,15 +2,19 @@
 	import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 	import type { SortKey, SortOrder } from '../../lib/utils/drive-sort';
 	import { acceptDragOver, dispatchDrop, dropKindOf } from '../../lib/utils/drop-target';
+	import ActionSheet from '$components/molecules/ActionSheet.svelte';
 	import type { DetailTarget } from '$components/organisms/DetailsPanel.svelte';
 	import DetailsPanel from '$components/organisms/DetailsPanel.svelte';
 	import DriveToolbar from '$components/organisms/DriveToolbar.svelte';
 	import FileGrid from '$components/organisms/FileGrid.svelte';
 	import FileList from '$components/organisms/FileList.svelte';
-	import FolderTree from '$components/organisms/FolderTree.svelte';
+	import FolderTreePane from '$components/organisms/FolderTreePane.svelte';
+	import PhoneActionBar from '$components/molecules/PhoneActionBar.svelte';
+	import PhoneFileList from '$components/organisms/PhoneFileList.svelte';
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
 	import SelectionBar from '$components/molecules/SelectionBar.svelte';
 	import type { ViewMode } from '../../lib/db/settings';
+	import { fade } from 'svelte/transition';
 
 	type Props = {
 		/** 親キーごとの子フォルダ一覧(ツリー用) */
@@ -57,7 +61,7 @@
 		onrename: () => void;
 		/** メタデータ保存時の処理 */
 		onsavemetadata: (metadata: {
-			/** コメント(代替テキスト)。空欄はnull */
+			/** 説明(代替テキスト)。空欄はnull */
 			comment: string | null;
 			/** センシティブフラグ */
 			isSensitive: boolean;
@@ -84,6 +88,16 @@
 		searchQuery: string | null;
 		/** 検索解除時の処理 */
 		onclearsearch: () => void;
+		/** スマートフォン表示かどうか(下から出るシートや下部のアクションバーを使う) */
+		phone?: boolean;
+		/** タブレット表示かどうか(操作はスマートフォンと同様だが、メニューやパネルは重ね表示を使う) */
+		tablet?: boolean;
+		/** 選択モード中かどうか(スマートフォン用) */
+		selectMode?: boolean;
+		/** 選択モードの開始・終了(スマートフォン用) */
+		ontoggleselectmode?: () => void;
+		/** 選択した項目の移動(移動先の選択)要求時の処理(スマートフォン用) */
+		onmoveselection?: () => void;
 	};
 
 	let {
@@ -120,15 +134,52 @@
 		onopenmenu,
 		searchQuery,
 		onclearsearch,
+		phone = false,
+		tablet = false,
+		selectMode = false,
+		ontoggleselectmode,
+		onmoveselection,
 	}: Props = $props();
+
+	const touch = $derived(phone || tablet);
 
 	/** 項目がない時の文言(検索中は結果なしの文言にする) */
 	const emptyMessage = $derived(
 		searchQuery === null ? 'このフォルダは空です' : '一致する項目はありません',
 	);
 
+	let sortOpen = $state(false);
+
+	const SORT_LABELS: { key: SortKey; label: string }[] = [
+		{ key: 'name', label: '名前' },
+		{ key: 'createdAt', label: '追加日' },
+		{ key: 'size', label: 'ファイルサイズ' },
+	];
+
+	const sortItems = $derived(
+		SORT_LABELS.map((entry) => ({
+			id: entry.key,
+			label:
+				entry.key === sortKey
+					? `${entry.label}(${sortOrder === 'asc' ? '昇順' : '降順'})`
+					: entry.label,
+			checked: entry.key === sortKey,
+		})),
+	);
+
 	/** 一覧領域内でOSファイルをドラッグしている深さ(子要素の出入りで増減するため数で持つ) */
 	let fileDragDepth = $state(0);
+
+	let treeOpen = $state(false);
+
+	/**
+	 * フォルダへ移動する(狭い画面のドロワーは閉じる)
+	 * @param folderId - 移動先のフォルダID(ルートはnull)
+	 */
+	const handleTreeNavigate = (folderId: string | null) => {
+		treeOpen = false;
+		onnavigate(folderId);
+	};
 
 	/**
 	 * OSファイルが一覧領域へ入った時に深さを増やす
@@ -188,12 +239,28 @@
 </script>
 
 <div class="workspace">
-	<aside data-tour="tree">
-		<FolderTree {childrenMap} {currentFolderId} {onnavigate} {ondropitems} {ondropfiles} />
-	</aside>
+	{#if treeOpen}
+		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -- ドロワーの背景。閉じる操作はツールバーのボタンでも行える -->
+		<div
+			class="drawer-scrim"
+			transition:fade={{ duration: 250 }}
+			onclick={() => {
+				treeOpen = false;
+			}}
+		></div>
+	{/if}
+	<FolderTreePane
+		{childrenMap}
+		{currentFolderId}
+		open={treeOpen}
+		onnavigate={handleTreeNavigate}
+		{ondropitems}
+		{ondropfiles}
+	/>
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -- 余白クリックでの選択解除は補助操作(Escキーでも解除できる) -->
 	<main
 		data-tour="list"
+		data-actionbar={phone && selectMode}
 		data-dropover={fileDragDepth > 0}
 		ondragenter={handleAreaDragEnter}
 		ondragleave={handleAreaDragLeave}
@@ -202,14 +269,16 @@
 		ondropcapture={resetAreaDrag}
 		onclick={handleAreaClick}
 	>
-		<!-- 選択中はツールバーの枠ごと選択バーに置き換え、一覧の位置がずれないようにする -->
+		<!-- 選択中はツールバーの枠ごと選択バーに置き換え、一覧の位置がずれないようにする(スマートフォンは下部のアクションバー、タブレットは選択モード中だけ) -->
 		<div>
-			{#if selectedKeys.length > 0}
+			{#if selectedKeys.length > 0 && !phone && (!tablet || selectMode)}
 				<SelectionBar
 					count={selectedKeys.length}
 					ondownload={ondownloadselection}
 					ondelete={ondeleteselection}
-					onclear={onclearselection}
+					onclear={tablet ? () => ontoggleselectmode?.() : onclearselection}
+					onmove={tablet ? onmoveselection : undefined}
+					clearLabel={tablet ? '選択を終了' : '選択を解除'}
 				/>
 			{:else}
 				<DriveToolbar
@@ -224,16 +293,41 @@
 					{onclearsearch}
 					ondropitems={ondropitems}
 					ondropfiles={ondropfiles}
+					ontoggletree={() => {
+						treeOpen = !treeOpen;
+					}}
+					{selectMode}
+					ontoggleselect={ontoggleselectmode}
+					onopensort={() => {
+						sortOpen = true;
+					}}
+					{phone}
 				/>
 			{/if}
 		</div>
-		{#if viewMode === 'list'}
+		{#if phone && viewMode === 'list'}
+			<PhoneFileList
+				{folders}
+				{files}
+				{selectedKeys}
+				{selectMode}
+				onselecttoggle={(kind, id) => {
+					onselectitem(kind, id, { toggle: true, range: false });
+				}}
+				onopenfolder={onnavigate}
+				{onpreviewfile}
+				{onopenmenu}
+				{emptyMessage}
+			/>
+		{:else if viewMode === 'list'}
 			<FileList
 				{folders}
 				{files}
 				{sortKey}
 				{sortOrder}
 				{selectedKeys}
+				{touch}
+				{selectMode}
 				{onsort}
 				{onselectitem}
 				onopenfolder={onnavigate}
@@ -250,6 +344,9 @@
 				{folders}
 				{files}
 				{selectedKeys}
+				{touch}
+				{selectMode}
+				dragEnabled={!phone}
 				{onselectitem}
 				onopenfolder={onnavigate}
 				{onpreviewfile}
@@ -263,7 +360,7 @@
 			/>
 		{/if}
 	</main>
-	{#if detailsOpen}
+	{#if detailsOpen && !phone}
 		<DetailsPanel
 			target={detailTarget}
 			selectionCount={selectedKeys.length}
@@ -275,24 +372,36 @@
 			{onsavemetadata}
 		/>
 	{/if}
+	{#if phone && selectMode}
+		<PhoneActionBar
+			count={selectedKeys.length}
+			onmove={() => {
+				onmoveselection?.();
+			}}
+			ondownload={ondownloadselection}
+			ondelete={ondeleteselection}
+		/>
+	{/if}
 </div>
+
+<ActionSheet
+	open={sortOpen}
+	title="並び替え"
+	items={sortItems}
+	onselect={onsort}
+	onclose={() => {
+		sortOpen = false;
+	}}
+/>
 
 <style>
 	.workspace {
 		display: flex;
+		position: relative;
 		flex: 1;
 		min-height: 0;
 		/* 詳細パネルがスライドで右へはみ出す間、横スクロールを出さない */
 		overflow: hidden;
-	}
-
-	aside {
-		display: flex;
-		flex-direction: column;
-		border-right: 1px solid var(--color-outline-weak);
-		min-width: 240px;
-		max-width: 240px;
-		overflow-y: auto;
 	}
 
 	main {
@@ -301,10 +410,13 @@
 		flex-direction: column;
 		overflow-y: auto;
 		padding: 20px;
+		padding-bottom: calc(20px + env(safe-area-inset-bottom));
 		gap: 15px;
 		min-width: 0;
 		/* スクロールバーの出入りで幅が変わり、グリッドの列数が振動しないように常に領域を確保する */
 		scrollbar-gutter: stable;
+		/* 端まで来てもページ側へスクロールを連鎖させない */
+		overscroll-behavior: contain;
 	}
 
 	/* ツールバーと選択バーの共通枠。どちらが出ても高さを揃える */
@@ -318,5 +430,28 @@
 	main[data-dropover='true'] {
 		outline: 2px solid var(--color-accent);
 		outline-offset: -2px;
+	}
+
+	/* 下部のアクションバーが一覧の末尾に重ならないように余白を確保する */
+	main[data-actionbar='true'] {
+		padding-bottom: calc(80px + env(safe-area-inset-bottom));
+	}
+
+	.drawer-scrim {
+		display: none;
+	}
+
+	/* 狭い画面: フォルダツリーはドロワー(FolderTreePane側でスライド)になり、ここではスクリムを出す */
+	@media (max-width: 640px) {
+		.drawer-scrim {
+			display: block;
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+			z-index: 15;
+			background-color: var(--color-scrim);
+		}
 	}
 </style>

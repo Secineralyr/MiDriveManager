@@ -1,11 +1,13 @@
 <script lang="ts">
 	import AccountMenu from '$components/organisms/AccountMenu.svelte';
 	import type { AccountRecord } from '../../lib/db/schema';
+	import ActionSheet from '$components/molecules/ActionSheet.svelte';
 	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 	import IconDeviceDesktop from '@tabler/icons-svelte/icons/device-desktop';
 	import IconHelp from '@tabler/icons-svelte/icons/help';
 	import IconMoon from '@tabler/icons-svelte/icons/moon';
 	import IconSun from '@tabler/icons-svelte/icons/sun';
+	import type { QueueSummary } from '../../lib/stores/queue.svelte';
 	import SearchBox from '$components/molecules/SearchBox.svelte';
 	import SyncIndicator from '$components/molecules/SyncIndicator.svelte';
 	import type { ThemeMode } from '../../lib/db/settings';
@@ -36,6 +38,12 @@
 		onclearsearch: () => void;
 		/** チュートリアル(使い方)の表示要求時の処理 */
 		onshowtutorial: () => void;
+		/** スマートフォン表示かどうか(メニューを下から出るシートにする) */
+		phone?: boolean;
+		/** 操作キューの進行状況(アカウントアイコンの印に使う。idleなら出さない) */
+		queueStatus?: QueueSummary;
+		/** アカウントアイコンの長押しで操作キューを開く操作(指定した場合だけ長押しを受け付ける) */
+		onopenqueue?: () => void;
 	};
 
 	let {
@@ -51,6 +59,9 @@
 		onsearch,
 		onclearsearch,
 		onshowtutorial,
+		phone = false,
+		queueStatus = 'idle',
+		onopenqueue,
 	}: Props = $props();
 
 	/** アプリメニューの表示位置(閉じている時はnull) */
@@ -122,22 +133,43 @@
 		</div>
 		<div>
 			<SyncIndicator status={syncStatus} count={syncCount} onretry={onresync} />
-			<AccountMenu {accounts} {active} {onswitch} {onadd} {onremove} />
+			<AccountMenu
+				{accounts}
+				{active}
+				{onswitch}
+				{onadd}
+				{onremove}
+				{phone}
+				indicator={queueStatus}
+				onlongpress={onopenqueue}
+			/>
 		</div>
 	</div>
 </header>
 
-<ContextMenu
-	open={appMenuPosition !== null}
-	x={appMenuPosition?.x ?? 0}
-	y={appMenuPosition?.y ?? 0}
-	items={appMenuItems}
-	anchor={logoButton}
-	onselect={handleAppMenuSelect}
-	onclose={() => {
-		appMenuPosition = null;
-	}}
-/>
+{#if phone}
+	<ActionSheet
+		open={appMenuPosition !== null}
+		title="メニュー"
+		items={appMenuItems}
+		onselect={handleAppMenuSelect}
+		onclose={() => {
+			appMenuPosition = null;
+		}}
+	/>
+{:else}
+	<ContextMenu
+		open={appMenuPosition !== null}
+		x={appMenuPosition?.x ?? 0}
+		y={appMenuPosition?.y ?? 0}
+		items={appMenuItems}
+		anchor={logoButton}
+		onselect={handleAppMenuSelect}
+		onclose={() => {
+			appMenuPosition = null;
+		}}
+	/>
+{/if}
 
 <style>
 	header {
@@ -190,5 +222,18 @@
 		border-radius: 5px;
 		aspect-ratio: 1;
 		inline-size: 30px;
+	}
+
+	/* 狭い画面: 検索ボックスはヘッダー下の行に折り返して全幅にする */
+	@media (max-width: 640px) {
+		header > div {
+			flex-wrap: wrap;
+		}
+
+		header > div > div:nth-child(2) {
+			order: 3;
+			flex-basis: 100%;
+			max-width: none;
+		}
 	}
 </style>

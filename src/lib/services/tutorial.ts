@@ -60,14 +60,23 @@ const makeFile = (id: string, name: string, mimeType: string): FileRecord => ({
 	userId: null,
 });
 
-/** ツアーの1歩 */
-export type TutorialStep = TutorialStepShape;
+/** チュートリアルを表示するUIのモード */
+type TutorialModeShape = 'desktop' | 'tablet' | 'phone';
 
-/** チュートリアルのデモに表示するドライブの内容 */
-export type TutorialDrive = TutorialDriveShape;
+const SEARCH_STEP: TutorialStepShape = {
+	target: 'search',
+	title: '検索',
+	description: 'ドライブ全体をファイル・フォルダ名・説明で検索します。',
+};
 
-/** ツアーの歩の並び(設計書の「ツリー、一覧、検索、詳細、キュー」+ツールバー) */
-export const TUTORIAL_STEPS: TutorialStep[] = [
+const QUEUE_CARD_STEP: TutorialStepShape = {
+	target: 'queue',
+	title: '操作の進行カード',
+	description:
+		'アップロードやダウンロード、削除などの操作はここに積まれて順に実行されます。進捗の確認や失敗した操作の再試行ができます。',
+};
+
+const DESKTOP_STEPS: TutorialStepShape[] = [
 	{
 		target: 'tree',
 		title: 'フォルダツリー',
@@ -86,29 +95,97 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 		description:
 			'現在の場所を確認できます。右側のボタンでアップロード、新しいフォルダの作成、リスト/グリッド表示の切り替えができます。',
 	},
-	{
-		target: 'search',
-		title: '検索',
-		description: 'ドライブ全体をファイル名・フォルダ名・コメントで検索します。',
-	},
+	SEARCH_STEP,
 	{
 		target: 'details',
 		title: '詳細パネル',
 		description:
-			'選択した項目の情報を表示します。名前の変更や、コメント(代替テキスト)・センシティブフラグの編集もここから行えます。',
+			'選択した項目の情報を表示します。名前の変更や、説明・センシティブフラグの編集もここから行えます。',
+	},
+	QUEUE_CARD_STEP,
+];
+
+const TABLET_STEPS: TutorialStepShape[] = [
+	{
+		target: 'tree',
+		title: 'フォルダツリー',
+		description:
+			'ドライブのフォルダ階層です。タップでそのフォルダを開き、ファイルやフォルダのドラッグ先としても使えます。',
 	},
 	{
-		target: 'queue',
-		title: '操作の進行カード',
+		target: 'list',
+		title: 'ファイル一覧',
 		description:
-			'アップロードやダウンロード、削除などの操作はここに積まれて順に実行されます。進捗の確認や、失敗した操作の再試行ができます。',
+			'表示中フォルダの中身です。タップでフォルダを開く・ファイルをプレビューし、長押しでメニューと詳細を表示します。項目はドラッグ&ドロップでフォルダへ移動できます。',
+	},
+	{
+		target: 'toolbar',
+		title: 'ツールバー',
+		description:
+			'現在の場所を確認できます。「選択」でまとめて操作する選択モードに切り替わり、アップロード、新しいフォルダの作成、表示の切り替えもここから行えます。',
+	},
+	SEARCH_STEP,
+	{
+		target: 'details',
+		title: '詳細パネル',
+		description:
+			'項目の長押しやメニューの「詳細」で開き、情報の確認、名前の変更、説明・センシティブフラグの編集ができます。',
+	},
+	QUEUE_CARD_STEP,
+];
+
+const PHONE_STEPS: TutorialStepShape[] = [
+	{
+		target: 'tree-toggle',
+		title: 'フォルダツリー',
+		description:
+			'ここからフォルダツリーを開けます。タップでそのフォルダへ移動し、階層をたどれます。',
+	},
+	{
+		target: 'list',
+		title: 'ファイル一覧',
+		description:
+			'表示中フォルダの中身です。タップでフォルダを開く・ファイルをプレビューし、長押しで下からメニューを表示します。',
+	},
+	{
+		target: 'toolbar',
+		title: 'ツールバー',
+		description:
+			'現在の場所を確認できます。「選択」でまとめて操作する選択モードに切り替わり、アップロードや並び替え、表示の切り替えもここから行えます。',
+	},
+	SEARCH_STEP,
+	{
+		target: 'account',
+		title: '操作の進行状況',
+		description:
+			'アップロードやダウンロード、削除などの操作の進行状況はアカウントアイコンの長押しで確認できます。実行中はアイコンに印が付きます。',
 	},
 ];
 
-/** デモで選択済みにして詳細パネルへ表示するファイル */
+/** ツアーの1歩 */
+export type TutorialStep = TutorialStepShape;
+
+/** チュートリアルのデモに表示するドライブの内容 */
+export type TutorialDrive = TutorialDriveShape;
+
+/** チュートリアルを表示するUIのモード */
+export type TutorialMode = TutorialModeShape;
+
+/**
+ * 表示中のUIに合わせたツアーの歩の並びを返す
+ * @param mode - UIのモード
+ * @returns 歩の並び
+ */
+export const tutorialSteps = (mode: TutorialMode): TutorialStep[] => {
+	if (mode === 'phone') {
+		return PHONE_STEPS;
+	}
+
+	return mode === 'tablet' ? TABLET_STEPS : DESKTOP_STEPS;
+};
+
 export const TUTORIAL_SELECTED_FILE: FileRecord = makeFile('f1', 'がぞー.jpg', 'image/jpeg');
 
-/** デモに表示するドライブの内容(実際のアカウントやキャッシュとは無関係の固定データ) */
 export const TUTORIAL_DRIVE: TutorialDrive = {
 	folders: [
 		makeFolder('d1', '写真', null),

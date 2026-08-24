@@ -166,3 +166,21 @@ describe('操作キューの整理', () => {
 		expect(queueStore.tasks.map((task) => task.id)).not.toContain(running.id);
 	});
 });
+
+describe('操作キューの要約', () => {
+	beforeEach(reset);
+
+	it('summaryは未完了があればrunning、失敗が残ればfailed、何もなければidleになる', async () => {
+		expect(queueStore.summary).toBe('idle');
+
+		const running = enqueueDeferred('実行中');
+		expect(queueStore.summary).toBe('running');
+
+		running.gate.reject(new Error('失敗'));
+		await queueStore.whenIdle();
+		expect(queueStore.summary).toBe('failed');
+
+		queueStore.clearFinished();
+		expect(queueStore.summary).toBe('idle');
+	});
+});

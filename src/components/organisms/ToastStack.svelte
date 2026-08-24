@@ -47,7 +47,7 @@
 	ol {
 		display: flex;
 		position: fixed;
-		bottom: 20px;
+		bottom: calc(20px + env(safe-area-inset-bottom));
 		left: 20px;
 		z-index: 1000;
 		flex-direction: column;

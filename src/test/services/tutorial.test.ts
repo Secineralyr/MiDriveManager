@@ -1,13 +1,9 @@
-import {
-	TUTORIAL_DRIVE,
-	TUTORIAL_SELECTED_FILE,
-	TUTORIAL_STEPS,
-} from '../../lib/services/tutorial';
+import { TUTORIAL_DRIVE, TUTORIAL_SELECTED_FILE, tutorialSteps } from '../../lib/services/tutorial';
 import { describe, expect, it } from 'vitest';
 
 describe('チュートリアルの定義', () => {
-	it('歩は設計の順(ツリー、一覧、ツールバー、検索、詳細、キュー)に並んでいる', () => {
-		expect(TUTORIAL_STEPS.map((step) => step.target)).toStrictEqual([
+	it('デスクトップの歩は設計の順(ツリー、一覧、ツールバー、検索、詳細、キュー)に並んでいる', () => {
+		expect(tutorialSteps('desktop').map((step) => step.target)).toStrictEqual([
 			'tree',
 			'list',
 			'toolbar',
@@ -15,6 +11,31 @@ describe('チュートリアルの定義', () => {
 			'details',
 			'queue',
 		]);
+	});
+
+	it('タブレットは同じ並びで、一覧の説明がタップと長押しの操作になっている', () => {
+		const steps = tutorialSteps('tablet');
+		expect(steps.map((step) => step.target)).toStrictEqual([
+			'tree',
+			'list',
+			'toolbar',
+			'search',
+			'details',
+			'queue',
+		]);
+		expect(steps.at(1)?.description).toContain('長押し');
+	});
+
+	it('スマートフォンはツリー開閉・一覧・ツールバー・検索・進行状況(アカウントアイコン)の5歩になっている', () => {
+		const steps = tutorialSteps('phone');
+		expect(steps.map((step) => step.target)).toStrictEqual([
+			'tree-toggle',
+			'list',
+			'toolbar',
+			'search',
+			'account',
+		]);
+		expect(steps.at(-1)?.description).toContain('アカウントアイコンの長押し');
 	});
 
 	it('デモのドライブに選択済みファイルが含まれている', () => {

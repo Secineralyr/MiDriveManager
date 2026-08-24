@@ -2,6 +2,8 @@
 	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
+	import { fade } from 'svelte/transition';
+	import { longPress } from '../../lib/utils/long-press';
 
 	type Props = {
 		/** フォルダカードかどうか */
@@ -14,6 +16,12 @@
 		thumbnailUrl?: string | null;
 		/** 選択中かどうか */
 		selected?: boolean;
+		/** タッチ操作かどうか(スマートフォン・タブレット。タップで開き、長押しでメニューを出す) */
+		touch?: boolean;
+		/** 選択モード中かどうか(タッチ操作用。タップで選択を切り替える) */
+		selectMode?: boolean;
+		/** ドラッグでの移動を受け付けるかどうか(スマートフォンでは無効にする) */
+		dragEnabled?: boolean;
 		/** クリックで選択された時の処理 */
 		onselect?: (modifiers: SelectModifiers) => void;
 		/** ダブルクリックで開く操作 */
@@ -36,6 +44,9 @@
 		mimeType = null,
 		thumbnailUrl = null,
 		selected = false,
+		touch = false,
+		selectMode = false,
+		dragEnabled = true,
 		onselect,
 		onopen,
 		ondragstartitem,
@@ -47,13 +58,34 @@
 
 	let dropover = $state(false);
 
+	// 選択中の見た目を出すかどうか(タッチ操作の通常時は選択状態を見せない)
+	const showSelected = $derived(selected && (!touch || selectMode));
+
 	/**
-	 * クリックを選択操作として通知する
+	 * クリックを通知する
+	 * タッチ操作では通常時は開く操作、選択モード中は選択の切り替えにする
 	 * @param event - マウスイベント
 	 */
 	const handleClick = (event: MouseEvent) => {
 		event.stopPropagation();
-		onselect?.({ toggle: event.ctrlKey || event.metaKey, range: event.shiftKey });
+		if (!touch) {
+			onselect?.({ toggle: event.ctrlKey || event.metaKey, range: event.shiftKey });
+			return;
+		}
+
+		if (selectMode) {
+			onselect?.({ toggle: true, range: false });
+		} else {
+			onopen?.();
+		}
+	};
+
+	/**
+	 * 長押しでメニューを開く(タッチ操作用)
+	 * @param position - 押し始めの座標
+	 */
+	const handleLongPress = (position: { x: number; y: number }) => {
+		onopenmenu?.(position);
 	};
 
 	/** ダブルクリックを外部ハンドラへ伝える */
@@ -127,10 +159,10 @@
 	};
 </script>
 
-<div>
+<div data-selectmode={selectMode}>
 	<button
 		type="button"
-		draggable="true"
+		draggable={dragEnabled}
 		onclick={handleClick}
 		ondblclick={handleDblClick}
 		oncontextmenu={handleContextMenu}
@@ -139,10 +171,11 @@
 		ondragover={handleDragOver}
 		ondragleave={handleDragLeave}
 		ondrop={handleDrop}
+		use:longPress={touch ? handleLongPress : undefined}
 		title={name}
-		data-selected={selected}
+		data-selected={showSelected}
 		data-dropover={dropover}
-		aria-pressed={selected}
+		aria-pressed={showSelected}
 	>
 		<span>
 			{#if thumbnailUrl !== null}
@@ -153,15 +186,18 @@
 		</span>
 		<span>{name}</span>
 	</button>
-	<input
-		type="checkbox"
-		aria-label="{name}を選択"
-		checked={selected}
-		onclick={handleCheckbox}
-		ondblclick={(event) => {
-			event.stopPropagation();
-		}}
-	/>
+	{#if !touch || selectMode}
+		<input
+			type="checkbox"
+			aria-label="{name}を選択"
+			checked={selected}
+			transition:fade={{ duration: 250 }}
+			onclick={handleCheckbox}
+			ondblclick={(event) => {
+				event.stopPropagation();
+			}}
+		/>
+	{/if}
 </div>
 
 <style>
@@ -175,6 +211,8 @@
 		font-family: inherit;
 		cursor: pointer;
 		inline-size: 100%;
+		/* 長い名前でもカードの幅を広げない(省略記号で切る) */
+		min-width: 0;
 		user-select: none;
 		transition:
 			background-color 250ms ease,
@@ -234,6 +272,7 @@
 		display: flex;
 		flex: 1;
 		position: relative;
+		min-width: 0;
 	}
 
 	div > input {
@@ -254,6 +293,11 @@
 	div:hover > input,
 	div > input:checked,
 	div > input:focus-visible {
+		opacity: 1;
+	}
+
+	/* 選択モード中(タッチ操作)はホバーに関わらず常に表示する */
+	div[data-selectmode='true'] > input {
 		opacity: 1;
 	}
 </style>

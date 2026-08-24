@@ -15,9 +15,21 @@
 		ondropitems?: (folderId: string | null) => void;
 		/** フォルダへのOSファイルドロップ時の処理 */
 		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
+		/** フォルダを選んだ時に、折りたたまれていれば下の階層も展開するかどうか */
+		expandOnSelect?: boolean;
+		/** これより深い階層はインデントを増やさない(タブレット・スマートフォンでの見切れ対策。既定は6) */
+		maxIndentDepth?: number;
 	};
 
-	let { childrenMap, currentFolderId, onnavigate, ondropitems, ondropfiles }: Props = $props();
+	let {
+		childrenMap,
+		currentFolderId,
+		onnavigate,
+		ondropitems,
+		ondropfiles,
+		expandOnSelect = false,
+		maxIndentDepth = 6,
+	}: Props = $props();
 
 	let expanded = $state<Record<string, boolean>>({});
 	let rootDropover = $state(false);
@@ -60,6 +72,17 @@
 		const current = expanded[folderId] ?? false;
 		expanded[folderId] = !current;
 	};
+
+	/**
+	 * フォルダを選ぶ(指定があれば下の階層も展開する)
+	 * @param folderId - 選ばれたフォルダID
+	 */
+	const handleSelect = (folderId: string) => {
+		if (expandOnSelect) {
+			expanded[folderId] = true;
+		}
+		onnavigate(folderId);
+	};
 </script>
 
 <nav aria-label="フォルダツリー">
@@ -94,9 +117,10 @@
 							{expanded}
 							{currentFolderId}
 							ontoggle={handleToggle}
-							onselect={onnavigate}
+							onselect={handleSelect}
 							{ondropitems}
 							{ondropfiles}
+							{maxIndentDepth}
 						/>
 					{/each}
 				</ul>
@@ -183,5 +207,31 @@
 		padding: 0;
 		padding-left: 20px;
 		list-style: none;
+	}
+
+	/* タッチ端末と狭い画面: ルート直下のインデントを浅くする(幅が尽きて見切れないように) */
+	@media (pointer: coarse), (max-width: 640px) {
+		nav > ul > li > ul {
+			margin-left: 6px;
+			padding-left: 6px;
+		}
+	}
+
+	/* タッチ操作の端末: 行を大きくして指で操作しやすくする */
+	@media (pointer: coarse) {
+		div {
+			padding: 6px 10px;
+			gap: 8px;
+		}
+
+		span {
+			justify-content: center;
+			min-width: 28px;
+			min-height: 28px;
+		}
+
+		div > button {
+			font-size: 1.05rem;
+		}
 	}
 </style>

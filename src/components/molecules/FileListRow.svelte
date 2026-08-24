@@ -3,6 +3,7 @@
 	import { formatDateTime, formatFileSize } from '../../lib/utils/format';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
+	import { longPress } from '../../lib/utils/long-press';
 
 	type Props = {
 		/** フォルダ行かどうか */
@@ -17,6 +18,10 @@
 		mimeType?: string | null;
 		/** 選択中かどうか */
 		selected?: boolean;
+		/** タッチ操作かどうか(タブレット。タップで開き、長押しでメニューを出す) */
+		touch?: boolean;
+		/** 選択モード中かどうか(タッチ操作用。タップで選択を切り替え、チェックボックスを表示する) */
+		selectMode?: boolean;
 		/** クリックで選択された時の処理 */
 		onselect?: (modifiers: SelectModifiers) => void;
 		/** ダブルクリックで開く操作 */
@@ -40,6 +45,8 @@
 		size,
 		mimeType = null,
 		selected = false,
+		touch = false,
+		selectMode = false,
 		onselect,
 		onopen,
 		ondragstartitem,
@@ -51,18 +58,44 @@
 
 	let dropover = $state(false);
 
+	// 選択中の見た目を出すかどうか(タッチ操作の通常時は選択状態を見せない)
+	const showSelected = $derived(selected && (!touch || selectMode));
+
+	// チェックボックスの列を出すかどうか(タッチ操作では選択モード中だけ)
+	const showCheckbox = $derived(!touch || selectMode);
+
 	/**
-	 * クリックを選択操作として通知する
+	 * クリックを通知する
+	 * タッチ操作では通常時は開く操作、選択モード中は選択の切り替えにする
 	 * @param event - マウスイベント
 	 */
 	const handleClick = (event: MouseEvent) => {
 		event.stopPropagation();
-		onselect?.({ toggle: event.ctrlKey || event.metaKey, range: event.shiftKey });
+		if (!touch) {
+			onselect?.({ toggle: event.ctrlKey || event.metaKey, range: event.shiftKey });
+			return;
+		}
+
+		if (selectMode) {
+			onselect?.({ toggle: true, range: false });
+		} else {
+			onopen?.();
+		}
 	};
 
-	/** ダブルクリックを外部ハンドラへ伝える */
+	/** ダブルクリックを外部ハンドラへ伝える(タッチ操作ではタップで開くので使わない) */
 	const handleDblClick = () => {
-		onopen?.();
+		if (!touch) {
+			onopen?.();
+		}
+	};
+
+	/**
+	 * 長押しでメニューを開く(タッチ操作用)
+	 * @param position - 押し始めの座標
+	 */
+	const handleLongPress = (position: { x: number; y: number }) => {
+		onopenmenu?.(position);
 	};
 
 	/**
@@ -141,12 +174,13 @@
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}
 	ondrop={handleDrop}
+	use:longPress={touch ? handleLongPress : undefined}
 	data-openable={onopen !== undefined}
-	data-selected={selected}
+	data-selected={showSelected}
 	data-dropover={dropover}
-	aria-selected={selected}
+	aria-selected={showSelected}
 >
-	<td>
+	<td data-hidden={!showCheckbox}>
 		<input
 			type="checkbox"
 			aria-label="{name}を選択"
@@ -200,9 +234,13 @@
 		color: var(--color-text);
 	}
 
-	/* 1列目: チェックボックス */
+	/* 1列目: チェックボックス(タッチ操作の通常時は列ごと隠す) */
 	td:first-child {
 		padding-right: 0;
+	}
+
+	td[data-hidden='true'] {
+		display: none;
 	}
 
 	/* 2列目: アイコンと名前 */

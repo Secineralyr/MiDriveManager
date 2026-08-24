@@ -13,11 +13,12 @@
 	import Spinner from '$components/atoms/Spinner.svelte';
 	import TutorialTour from '$components/organisms/TutorialTour.svelte';
 	import { accountsStore } from './lib/stores/accounts.svelte';
-	import { forwardDriveErrorsToToast } from './lib/stores/drive-error-toast';
 	import { onMount } from 'svelte';
+	import { queueStore } from './lib/stores/queue.svelte';
 	import { searchStore } from './lib/stores/search.svelte';
 	import { syncStore } from './lib/stores/sync.svelte';
 	import { themeStore } from './lib/stores/theme.svelte';
+	import { viewportStore } from './lib/stores/viewport.svelte';
 
 	/** 表示する画面の種類 */
 	type Screen = 'loading' | 'wizard' | 'main';
@@ -28,6 +29,7 @@
 	let noticeAccepted = $state(false);
 	let tutorialSeen = $state(true);
 	let tutorialOpen = $state(false);
+	let queueOpen = $state(false);
 
 	const activeAccount = $derived(accountsStore.active);
 
@@ -194,9 +196,6 @@
 		}
 	});
 
-	$effect(() => {
-		forwardDriveErrorsToToast();
-	});
 
 	$effect(() => {
 		// 初回のアカウント追加が終わってメイン画面に入ったら、チュートリアルを自動で開始する
@@ -215,6 +214,7 @@
 		<AppHeader
 		accounts={accountsStore.accounts}
 		active={activeAccount}
+		phone={viewportStore.phone}
 		syncStatus={syncStore.status}
 		syncCount={syncStore.folderCount + syncStore.fileCount}
 		onswitch={handleSwitch}
@@ -230,6 +230,10 @@
 		}}
 		onshowtutorial={() => {
 			tutorialOpen = true;
+		}}
+		queueStatus={viewportStore.phone ? queueStore.summary : 'idle'}
+		onopenqueue={() => {
+			queueOpen = true;
 		}}
 	/>
 		<DrivePage account={activeAccount} />
@@ -248,10 +252,18 @@
 	{/if}
 {/if}
 
-<AppOverlays />
+<AppOverlays
+	phone={viewportStore.phone}
+	{queueOpen}
+	onclosequeue={() => {
+		queueOpen = false;
+	}}
+/>
 
 <TutorialTour
 	open={tutorialOpen}
+	phone={viewportStore.phone}
+	tablet={viewportStore.tablet}
 	onclose={() => {
 		const _ = handleCloseTutorial();
 	}}

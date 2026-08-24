@@ -1,8 +1,11 @@
 <script lang="ts">
 	import Breadcrumbs from '$components/molecules/Breadcrumbs.svelte';
+	import Button from '$components/atoms/Button.svelte';
 	import type { FolderRecord } from '../../lib/db/schema';
+	import IconArrowsSort from '@tabler/icons-svelte/icons/arrows-sort';
 	import IconButton from '$components/atoms/IconButton.svelte';
 	import IconFolderPlus from '@tabler/icons-svelte/icons/folder-plus';
+	import IconLayoutSidebar from '@tabler/icons-svelte/icons/layout-sidebar';
 	import IconUpload from '@tabler/icons-svelte/icons/upload';
 	import IconX from '@tabler/icons-svelte/icons/x';
 	import type { ViewMode } from '../../lib/db/settings';
@@ -31,6 +34,16 @@
 		ondropitems?: (folderId: string | null) => void;
 		/** パンくずのフォルダへのOSファイルドロップ時の処理 */
 		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
+		/** フォルダツリーの開閉(狭い画面のドロワー用。ボタンは狭い画面でのみ表示) */
+		ontoggletree?: () => void;
+		/** 選択モード中かどうか(スマートフォン用) */
+		selectMode?: boolean;
+		/** 選択モードの開始・終了(スマートフォン用。ボタンはスマートフォンでのみ表示) */
+		ontoggleselect?: () => void;
+		/** 並び替えシートを開く操作(スマートフォン用。ボタンはスマートフォンでのみ表示) */
+		onopensort?: () => void;
+		/** スマートフォン表示かどうか(パンくずの省略メニューをシートにする) */
+		phone?: boolean;
 	};
 
 	let {
@@ -45,6 +58,11 @@
 		onclearsearch,
 		ondropitems,
 		ondropfiles,
+		ontoggletree,
+		selectMode = false,
+		ontoggleselect,
+		onopensort,
+		phone = false,
 	}: Props = $props();
 
 	let fileInput = $state<HTMLInputElement | null>(null);
@@ -74,27 +92,46 @@
 </script>
 
 <div data-tour="toolbar">
-	{#if searchQuery === null}
-		<Breadcrumbs items={breadcrumbItems} {onnavigate} {ondropitems} {ondropfiles} />
-	{:else}
-		<p>
-			<span>「{searchQuery}」の検索結果: {resultCount}件</span>
-			<IconButton label="検索を解除" onclick={onclearsearch}>
-				<IconX size={16} />
-			</IconButton>
-		</p>
-	{/if}
+	<!-- パンくず(または検索見出し)の段。スマートフォンでは選択モードの切り替えも並べ、操作ボタンの段の下に置く -->
 	<div>
-		<input type="file" multiple hidden bind:this={fileInput} onchange={handleFilesChosen} />
 		{#if searchQuery === null}
-			<IconButton label="アップロード" onclick={openFilePicker}>
-				<IconUpload size={18} />
-			</IconButton>
-			<IconButton label="新しいフォルダ" onclick={oncreatefolder}>
-				<IconFolderPlus size={18} />
-			</IconButton>
+			<Breadcrumbs items={breadcrumbItems} {onnavigate} {ondropitems} {ondropfiles} {phone} />
+		{:else}
+			<p>
+				<span>「{searchQuery}」の検索結果: {resultCount}件</span>
+				<IconButton label="検索を解除" onclick={onclearsearch}>
+					<IconX size={16} />
+				</IconButton>
+			</p>
 		{/if}
-		<ViewModeSwitch {viewMode} onchange={onviewmode} />
+		<span data-select-toggle>
+			<Button variant="text" onclick={ontoggleselect}>{selectMode ? '完了' : '選択'}</Button>
+		</span>
+	</div>
+	<!-- 操作ボタンの段(デスクトップではパンくずの右隣、スマートフォンでは上段) -->
+	<div>
+		<span data-tree-toggle data-tour="tree-toggle">
+			<IconButton label="フォルダツリーを開く" onclick={ontoggletree}>
+				<IconLayoutSidebar size={18} />
+			</IconButton>
+		</span>
+		<span>
+			<input type="file" multiple hidden bind:this={fileInput} onchange={handleFilesChosen} />
+			{#if searchQuery === null}
+				<IconButton label="アップロード" onclick={openFilePicker}>
+					<IconUpload size={18} />
+				</IconButton>
+				<IconButton label="新しいフォルダ" onclick={oncreatefolder}>
+					<IconFolderPlus size={18} />
+				</IconButton>
+			{/if}
+			<span data-phone-only>
+				<IconButton label="並び替え" onclick={onopensort}>
+					<IconArrowsSort size={18} />
+				</IconButton>
+			</span>
+			<ViewModeSwitch {viewMode} onchange={onviewmode} />
+		</span>
 	</div>
 </div>
 
@@ -106,8 +143,17 @@
 		gap: 10px;
 	}
 
-	div > div {
+	/* パンくずの段は残り幅を使う */
+	div > div:first-child {
+		flex: 1;
+		min-width: 0;
+	}
+
+	/* 操作ボタンの並び。ツリー開閉ボタンがない時も右寄せになるようにする */
+	div > div:last-child > span:last-child {
 		display: flex;
+		align-items: center;
+		margin-left: auto;
 		gap: 5px;
 	}
 
@@ -125,5 +171,49 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* ツリー開閉ボタンは狭い画面(ドロワー化した時)だけ表示する */
+	span[data-tree-toggle] {
+		display: none;
+	}
+
+	/* 並び替えのボタンはスマートフォンだけ、選択モードのボタンはタブレット以下で表示する */
+	span[data-phone-only],
+	span[data-select-toggle] {
+		display: none;
+	}
+
+	/* 選択モードはタッチ端末と、スマートフォンレイアウトになる狭い画面で使う */
+	@media (pointer: coarse), (max-width: 640px) {
+		span[data-select-toggle] {
+			display: inline-flex;
+		}
+	}
+
+	/* スマートフォン: 上段に操作ボタン、下段にパンくず+選択の2層にする */
+	@media (max-width: 640px) {
+		div {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 5px;
+		}
+
+		div > div {
+			flex-direction: row;
+			align-items: center;
+		}
+
+		div > div:first-child {
+			order: 2;
+		}
+
+		span[data-tree-toggle] {
+			display: inline-flex;
+		}
+
+		span[data-phone-only] {
+			display: inline-flex;
+		}
 	}
 </style>

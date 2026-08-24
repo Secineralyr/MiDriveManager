@@ -11,6 +11,12 @@
 		files: FileRecord[];
 		/** 選択中の選択キー一覧 */
 		selectedKeys: string[];
+		/** タッチ操作かどうか(スマートフォン・タブレット。タップで開き、長押しでメニューを出す) */
+		touch?: boolean;
+		/** 選択モード中かどうか(タッチ操作用) */
+		selectMode?: boolean;
+		/** ドラッグでの移動を受け付けるかどうか(スマートフォンでは無効にする) */
+		dragEnabled?: boolean;
 		/** 項目が選択された時の処理 */
 		onselectitem: (kind: 'file' | 'folder', id: string, modifiers: SelectModifiers) => void;
 		/** フォルダを開く操作 */
@@ -37,6 +43,9 @@
 		folders,
 		files,
 		selectedKeys,
+		touch = false,
+		selectMode = false,
+		dragEnabled = true,
 		onselectitem,
 		onopenfolder,
 		onpreviewfile,
@@ -103,6 +112,9 @@
 					folder
 					name={folder.name}
 					selected={selectedKeys.includes(makeSelectionKey('folder', folder.id))}
+					{touch}
+					{selectMode}
+					{dragEnabled}
 					onselect={(modifiers) => {
 						onselectitem('folder', folder.id, modifiers);
 					}}
@@ -128,6 +140,9 @@
 					mimeType={file.type}
 					thumbnailUrl={file.thumbnailUrl}
 					selected={selectedKeys.includes(makeSelectionKey('file', file.id))}
+					{touch}
+					{selectMode}
+					{dragEnabled}
 					onselect={(modifiers) => {
 						onselectitem('file', file.id, modifiers);
 					}}
@@ -160,6 +175,8 @@
 
 	li {
 		display: flex;
+		/* 長い名前のカードが固定幅の列からはみ出さないようにする */
+		min-width: 0;
 	}
 
 	p {
