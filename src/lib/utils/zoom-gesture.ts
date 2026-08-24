@@ -55,15 +55,15 @@ const movePinch = (state: GestureState) => {
 	const center = midpoint(a, b);
 	const scale = (state.pinch.transform.scale * distanceBetween(a, b)) / state.pinch.distance;
 	const zoomed = zoomAround(state.transform, center, scale);
-	
+
 	state.moved += distanceBetween(center, state.last);
-	
+
 	const panned = {
 		...zoomed,
 		x: zoomed.x + center.x - state.last.x,
 		y: zoomed.y + center.y - state.last.y,
 	};
-	
+
 	state.last = center;
 
 	commitTransform(state, panned, false);
@@ -104,11 +104,11 @@ const handleTap = (state: GestureState, point: Point, time: number) => {
 		previous !== null &&
 		time - previous.time < DOUBLE_TAP_MS &&
 		distanceBetween(point, previous.point) < DOUBLE_TAP_DISTANCE_PX;
-	
+
 	if (isDouble) {
 		state.lastTap = null;
 		state.suppressClick = true;
-		
+
 		const zoomed = zoomAround({ ...IDENTITY }, point, DOUBLE_TAP_SCALE);
 		commitTransform(state, state.transform.scale > 1 ? { ...IDENTITY } : zoomed, true);
 	} else {
@@ -185,11 +185,11 @@ export const handlePointerUp = (state: GestureState, event: PointerEvent) => {
 	}
 
 	state.pointers.delete(event.pointerId);
-	
+
 	const points = [...state.pointers.values()];
 	state.pinch = null;
 	state.last = points[0] ?? null;
-	
+
 	if (points.length === 0) {
 		finishGesture(state, point, event.timeStamp);
 	}
@@ -205,14 +205,14 @@ export const handleWheel = (state: GestureState, event: WheelEvent) => {
 		return;
 	}
 	event.preventDefault();
-	
+
 	const factor = event.deltaY < 0 ? WHEEL_FACTOR : 1 / WHEEL_FACTOR;
 	const next = zoomAround(
 		state.transform,
 		toLocal(state.node, event),
 		state.transform.scale * factor,
 	);
-	
+
 	commitTransform(state, next, false);
 };
 

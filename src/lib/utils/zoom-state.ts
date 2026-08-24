@@ -95,7 +95,7 @@ export const commitTransform = (state: GestureState, next: ZoomTransform, animat
 		contentHeight: state.target.offsetHeight,
 	});
 	state.transform = clamped.scale < SNAP_SCALE ? { ...IDENTITY } : clamped;
-	
+
 	applyTransform(state, animate);
 };
 
@@ -109,6 +109,6 @@ export const resetTarget = (state: GestureState, target: HTMLElement | null) => 
 	state.transform = { ...IDENTITY };
 	state.pointers = new Map<number, Point>();
 	state.pinch = null;
-	
+
 	applyTransform(state, false);
 };

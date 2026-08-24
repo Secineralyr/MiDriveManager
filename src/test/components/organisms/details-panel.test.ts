@@ -74,9 +74,7 @@ describe('詳細パネルの表示', () => {
 		expect(screen.queryByText('がぞー.jpg')).not.toBeNull();
 		expect(screen.queryByText('image/jpeg')).not.toBeNull();
 		expect(screen.queryByText('1.5 MB')).not.toBeNull();
-		expect(screen.getByLabelText<HTMLTextAreaElement>('説明').value).toBe(
-			'旅行で撮った写真',
-		);
+		expect(screen.getByLabelText<HTMLTextAreaElement>('説明').value).toBe('旅行で撮った写真');
 		expect(screen.getByLabelText<HTMLInputElement>('センシティブ').checked).toBe(false);
 	});
 });
