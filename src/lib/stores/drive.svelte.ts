@@ -58,6 +58,28 @@ const withLoading = async (task: () => Promise<void>) => {
 	state.loading = false;
 };
 
+/**
+ * キャッシュから閲覧状態を読み直す
+ * 表示中のフォルダが存在しなくなっていた場合はルートへ戻る
+ */
+const reloadFromCache = async () => {
+	const { accountId } = state;
+	if (accountId === null) {
+		return;
+	}
+
+	state.allFolders = await listAccountFolders(accountId);
+	const current = state.currentFolderId;
+	const exists = current === null || state.allFolders.some((folder) => folder.id === current);
+	if (!exists) {
+		state.currentFolderId = null;
+	}
+
+	state.files = await listFilesInFolder(accountId, state.currentFolderId);
+};
+
+let quietRefreshRunning = false;
+
 /** ドライブ閲覧の状態を管理するストア */
 export const driveStore = {
 	/**
@@ -211,22 +233,30 @@ export const driveStore = {
 	 * 表示中のフォルダが存在しなくなっていた場合はルートへ戻る
 	 */
 	async refresh() {
-		const { accountId } = state;
-		if (accountId === null) {
+		if (state.accountId === null) {
 			return;
 		}
 
-		await withLoading(async () => {
-			state.allFolders = await listAccountFolders(accountId);
-			const current = state.currentFolderId;
-			const exists =
-				current === null || state.allFolders.some((folder) => folder.id === current);
-			if (!exists) {
-				state.currentFolderId = null;
-			}
+		await withLoading(reloadFromCache);
+	},
 
-			state.files = await listFilesInFolder(accountId, state.currentFolderId);
-		});
+	/**
+	 * 読み込み中表示を出さずにキャッシュから再読み込みする(同期中の逐次反映用)
+	 * すでに実行中の場合は重ねて実行しない
+	 */
+	async refreshQuiet() {
+		if (quietRefreshRunning) {
+			return;
+		}
+
+		quietRefreshRunning = true;
+		try {
+			await reloadFromCache();
+		} catch {
+			// 同期完了時のrefreshに任せる
+		}
+
+		quietRefreshRunning = false;
 	},
 
 	/**

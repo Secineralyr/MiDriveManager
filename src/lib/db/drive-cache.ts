@@ -1,7 +1,30 @@
-import type { FileRecord, FolderRecord } from './schema';
+import type { DriveManagerSchema, FileRecord, FolderRecord } from './schema';
+import type { IDBPObjectStore } from 'idb';
 import { accountKeyRange } from './accounts';
 import type { entities } from 'misskey-js';
 import { openDatabase } from './database';
+
+/**
+ * ストア内で残すIDに含まれないレコードの削除を予約する(pruneDriveCacheの下請け)
+ * @param store - 対象のストア(files/foldersのトランザクション内ストア)
+ * @param range - 対象アカウントのキー範囲
+ * @param keepIds - 残すIDの集合
+ * @returns 削除リクエストのPromiseの配列
+ */
+const pruneStore = async <Name extends 'files' | 'folders'>(
+	store: IDBPObjectStore<DriveManagerSchema, ('files' | 'folders')[], Name, 'readwrite'>,
+	range: IDBKeyRange,
+	keepIds: Set<string>,
+) => {
+	const pending: Promise<void>[] = [];
+	for await (const cursor of store.iterate(range)) {
+		if (!keepIds.has(cursor.value.id)) {
+			pending.push(cursor.delete());
+		}
+	}
+
+	return pending;
+};
 
 /**
  * MisskeyのDriveFileをキャッシュレコードへ変換する
@@ -149,27 +172,47 @@ export const deleteCachedFolder = async (accountId: string, folderId: string) =>
 };
 
 /**
- * 指定アカウントのドライブキャッシュを渡された内容で洗い替える
- * 削除検出のため、既存キャッシュをすべて消してから入れ直す(他アカウントには影響しない)
- * @param accountId - 対象アカウントのアプリ内ID
- * @param folders - 保存するフォルダキャッシュ
- * @param files - 保存するファイルキャッシュ
+ * フォルダキャッシュをまとめて保存する(同一キーは上書き)
+ * @param records - 保存するフォルダキャッシュ
  */
-export const replaceDriveCache = async (
+export const putCachedFolders = async (records: FolderRecord[]) => {
+	const db = await openDatabase();
+	const tx = db.transaction('folders', 'readwrite');
+	await Promise.all([...records.map((record) => tx.store.put(record)), tx.done]);
+};
+
+/**
+ * ファイルキャッシュをまとめて保存する(同一キーは上書き)
+ * @param records - 保存するファイルキャッシュ
+ */
+export const putCachedFiles = async (records: FileRecord[]) => {
+	const db = await openDatabase();
+	const tx = db.transaction('files', 'readwrite');
+	await Promise.all([...records.map((record) => tx.store.put(record)), tx.done]);
+};
+
+/**
+ * 同期で見なかったレコードを削除して、指定アカウントのキャッシュを取得結果へ揃える
+ * (同期はページごとに逐次保存するため、サーバー側で削除された項目は完了時にここで取り除く。
+ * 他アカウントには影響しない)
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param keep - 残すID(同期で見たID)の集合
+ */
+export const pruneDriveCache = async (
 	accountId: string,
-	folders: FolderRecord[],
-	files: FileRecord[],
+	keep: {
+		/** 残すフォルダIDの集合 */
+		folderIds: Set<string>;
+		/** 残すファイルIDの集合 */
+		fileIds: Set<string>;
+	},
 ) => {
 	const db = await openDatabase();
 	const range = accountKeyRange(accountId);
 	const tx = db.transaction(['files', 'folders'], 'readwrite');
-	const filesStore = tx.objectStore('files');
-	const foldersStore = tx.objectStore('folders');
 
-	await Promise.all([filesStore.delete(range), foldersStore.delete(range)]);
-	await Promise.all([
-		...folders.map((folder) => foldersStore.put(folder)),
-		...files.map((file) => filesStore.put(file)),
-		tx.done,
-	]);
+	const fileDeletes = await pruneStore(tx.objectStore('files'), range, keep.fileIds);
+	const folderDeletes = await pruneStore(tx.objectStore('folders'), range, keep.folderIds);
+
+	await Promise.all([...fileDeletes, ...folderDeletes, tx.done]);
 };

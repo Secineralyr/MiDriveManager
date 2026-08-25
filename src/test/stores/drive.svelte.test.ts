@@ -134,6 +134,19 @@ describe('再読み込み', () => {
 		expect(driveStore.currentFolderId).toBeNull();
 		expect(driveStore.files.map((file) => file.id)).toStrictEqual(['f1']);
 	});
+
+	it('refreshQuietは読み込み中表示を出さずに再読み込みする', async () => {
+		await driveStore.openFolder('d1');
+		const db = await openDatabase();
+		await db.put('files', makeFile('f9', '追加ファイル.png', 'd1'));
+
+		const reloading = driveStore.refreshQuiet();
+		expect(driveStore.loading).toBe(false);
+		await reloading;
+
+		expect(driveStore.loading).toBe(false);
+		expect(driveStore.files.map((file) => file.id).toSorted()).toStrictEqual(['f2', 'f9']);
+	});
 });
 
 describe('エラーの消去', () => {

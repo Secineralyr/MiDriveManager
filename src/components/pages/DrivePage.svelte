@@ -276,6 +276,19 @@
 	});
 
 	$effect(() => {
+		const progress = syncStore.folderCount + syncStore.fileCount;
+		if (
+			progress > 0 &&
+			syncStore.status === 'syncing' &&
+			syncStore.accountId === account.id &&
+			driveStore.accountId === account.id
+		) {
+			// 同期はページ取得ごとにキャッシュへ書き込む
+			const _ = driveStore.refreshQuiet();
+		}
+	});
+
+	$effect(() => {
 		if (selectionStore.last !== null) {
 			detailsClosed = false;
 		}

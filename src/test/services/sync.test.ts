@@ -145,6 +145,42 @@ describe('ドライブ全量同期', () => {
 	});
 });
 
+describe('ページごとの逐次反映', () => {
+	beforeEach(resetDb);
+
+	it('ファイルはページ取得ごとにキャッシュへ書き込まれる', async () => {
+		const files = Array.from({ length: 150 }, (unused, index) =>
+			makeFile(`f${1000 - index}`, null),
+		);
+		const base = makeFakeClient({ root: [] }, files);
+		const countsBeforeRequest: number[] = [];
+		const client: SyncClient = {
+			driveFolders: base.driveFolders,
+			driveStream: async (params) => {
+				const db = await openDatabase();
+				countsBeforeRequest.push(await db.count('files'));
+				return base.driveStream(params);
+			},
+		};
+
+		await syncDrive(makeAccount('a1'), client);
+
+		// 2ページ目のリクエスト時点で1ページ目の100件が保存済みになっている
+		expect(countsBeforeRequest).toStrictEqual([0, 100]);
+	});
+
+	it('サーバーから消えたフォルダは同期完了時に取り除かれる', async () => {
+		const db = await openDatabase();
+		await db.put('folders', { ...makeFolder('gone', null), accountId: 'a1', parentKey: '' });
+		const client = makeFakeClient({ root: [makeFolder('kept', null)] }, []);
+
+		await syncDrive(makeAccount('a1'), client);
+
+		const folders = await db.getAll('folders');
+		expect(folders.map((folder) => folder.id)).toStrictEqual(['kept']);
+	});
+});
+
 describe('キャッシュの洗い替えと付随情報', () => {
 	beforeEach(resetDb);
 

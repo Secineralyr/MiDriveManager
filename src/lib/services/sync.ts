@@ -1,10 +1,15 @@
-import { replaceDriveCache, toFileRecord, toFolderRecord } from '../db/drive-cache';
+import {
+	pruneDriveCache,
+	putCachedFiles,
+	putCachedFolders,
+	toFileRecord,
+	toFolderRecord,
+} from '../db/drive-cache';
 import type { AccountRecord } from '../db/schema';
 import type { DriveClient } from '../api/client';
 import type { entities } from 'misskey-js';
 import { putAccount } from '../db/accounts';
 
-/** 1回のリクエストで取得する件数 */
 const PAGE_LIMIT = 100;
 
 /**
@@ -15,13 +20,16 @@ const PAGE_LIMIT = 100;
 const cursorParams = (cursor: string | null) => (cursor === null ? {} : { untilId: cursor });
 
 /**
- * 指定した親フォルダ直下のフォルダをページネーションで全件取得する
+ * 指定した親フォルダ直下のフォルダをページネーションで全件取得し、ページごとに通知する
  * @param client - APIクライアント
  * @param parentId - 親フォルダID(ルート直下はnull)
- * @returns フォルダの配列
+ * @param onPage - 1ページ分のフォルダを受け取る処理
  */
-const fetchChildFolders = async (client: SyncClient, parentId: string | null) => {
-	const result: entities.DriveFolder[] = [];
+const fetchChildFolders = async (
+	client: SyncClient,
+	parentId: string | null,
+	onPage: (page: entities.DriveFolder[]) => Promise<void>,
+) => {
 	let cursor: string | null = null;
 
 	while (true) {
@@ -31,11 +39,14 @@ const fetchChildFolders = async (client: SyncClient, parentId: string | null) =>
 			limit: PAGE_LIMIT,
 			...cursorParams(cursor),
 		});
-		result.push(...page);
+		if (page.length > 0) {
+			// oxlint-disable-next-line eslint/no-await-in-loop - 取得したページを逐次キャッシュへ反映する
+			await onPage(page);
+		}
 
 		const last = page.at(-1);
 		if (page.length < PAGE_LIMIT || last === undefined) {
-			return result;
+			return;
 		}
 
 		cursor = last.id;
@@ -43,50 +54,52 @@ const fetchChildFolders = async (client: SyncClient, parentId: string | null) =>
 };
 
 /**
- * ルートから幅優先で全フォルダを取得する
+ * ルートから幅優先で全フォルダを取得し、ページごとに通知する
  * フォルダは親フォルダ指定でしか列挙できないため、ツリーを辿って集める
  * @param client - APIクライアント
- * @param onCount - 取得済み件数の通知
- * @returns フォルダの配列
+ * @param onPage - 1ページ分のフォルダを受け取る処理
  */
-const fetchAllFolders = async (client: SyncClient, onCount: (count: number) => void) => {
-	const all: entities.DriveFolder[] = [];
+const fetchAllFolders = async (
+	client: SyncClient,
+	onPage: (page: entities.DriveFolder[]) => Promise<void>,
+) => {
 	const parents: (string | null)[] = [null];
 
 	// for-ofの配列イテレーターは走査中にpushした要素も辿るため、キューとして機能する
 	for (const parent of parents) {
 		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
-		const children = await fetchChildFolders(client, parent);
-		all.push(...children);
+		await fetchChildFolders(client, parent, async (page) => {
+			for (const child of page) {
+				parents.push(child.id);
+			}
 
-		for (const child of children) {
-			parents.push(child.id);
-		}
-
-		onCount(all.length);
+			await onPage(page);
+		});
 	}
-	return all;
 };
 
 /**
- * drive/streamをページネーションして全ファイルを取得する
+ * drive/streamをページネーションして全ファイルを取得し、ページごとに通知する
  * @param client - APIクライアント
- * @param onCount - 取得済み件数の通知
- * @returns ファイルの配列
+ * @param onPage - 1ページ分のファイルを受け取る処理
  */
-const fetchAllFiles = async (client: SyncClient, onCount: (count: number) => void) => {
-	const all: entities.DriveFile[] = [];
+const fetchAllFiles = async (
+	client: SyncClient,
+	onPage: (page: entities.DriveFile[]) => Promise<void>,
+) => {
 	let cursor: string | null = null;
 
 	while (true) {
 		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
 		const page = await client.driveStream({ limit: PAGE_LIMIT, ...cursorParams(cursor) });
-		all.push(...page);
-		onCount(all.length);
+		if (page.length > 0) {
+			// oxlint-disable-next-line eslint/no-await-in-loop - 取得したページを逐次キャッシュへ反映する
+			await onPage(page);
+		}
 
 		const last = page.at(-1);
 		if (page.length < PAGE_LIMIT || last === undefined) {
-			return all;
+			return;
 		}
 
 		cursor = last.id;
@@ -113,7 +126,8 @@ export type SyncResult = {
 };
 
 /**
- * アカウントのドライブ全体(全フォルダ・全ファイル)を取得し、ローカルキャッシュを洗い替える
+ * アカウントのドライブ全体(全フォルダ・全ファイル)を取得し、ローカルキャッシュへ反映する
+ * 取得したページごとに逐次保存し(リアルタイム反映)、完了時に見なかったレコードを削除して揃える
  * 完了時はアカウントの最終同期日時も更新する
  * @param account - 同期するアカウント
  * @param client - APIクライアント
@@ -125,28 +139,32 @@ export const syncDrive = async (
 	client: SyncClient,
 	onProgress?: (progress: SyncProgress) => void,
 ): Promise<SyncResult> => {
-	let folderCount = 0;
-	let fileCount = 0;
+	const folderIds = new Set<string>();
+	const fileIds = new Set<string>();
 	/** 現在の件数を進捗として通知する */
 	const notify = () => {
-		onProgress?.({ folderCount, fileCount });
+		onProgress?.({ folderCount: folderIds.size, fileCount: fileIds.size });
 	};
 
-	const folders = await fetchAllFolders(client, (count) => {
-		folderCount = count;
+	await fetchAllFolders(client, async (page) => {
+		for (const folder of page) {
+			folderIds.add(folder.id);
+		}
+
+		await putCachedFolders(page.map((folder) => toFolderRecord(account.id, folder)));
 		notify();
 	});
-	const files = await fetchAllFiles(client, (count) => {
-		fileCount = count;
+	await fetchAllFiles(client, async (page) => {
+		for (const file of page) {
+			fileIds.add(file.id);
+		}
+
+		await putCachedFiles(page.map((file) => toFileRecord(account.id, file)));
 		notify();
 	});
 
-	await replaceDriveCache(
-		account.id,
-		folders.map((folder) => toFolderRecord(account.id, folder)),
-		files.map((file) => toFileRecord(account.id, file)),
-	);
+	await pruneDriveCache(account.id, { folderIds, fileIds });
 	await putAccount({ ...account, lastSyncedAt: new Date().toISOString() });
 
-	return { folderCount: folders.length, fileCount: files.length };
+	return { folderCount: folderIds.size, fileCount: fileIds.size };
 };
