@@ -123,7 +123,7 @@ export type RateLimiterOptions = {
  */
 export const createRateLimiter = (options: RateLimiterOptions = {}) => {
 	const config: ResolvedOptions = {
-		minIntervalMs: options.minIntervalMs ?? 350,
+		minIntervalMs: options.minIntervalMs ?? 500,
 		maxRetries: options.maxRetries ?? 3,
 		baseBackoffMs: options.baseBackoffMs ?? 1000,
 		sleep: options.sleep ?? defaultSleep,

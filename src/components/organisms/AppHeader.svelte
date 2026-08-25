@@ -1,19 +1,10 @@
 <script lang="ts">
-	import AboutDialog from '$components/molecules/AboutDialog.svelte';
 	import AccountMenu from '$components/organisms/AccountMenu.svelte';
 	import type { AccountRecord } from '../../lib/db/schema';
-	import ActionSheet from '$components/molecules/ActionSheet.svelte';
-	import ContextMenu from '$components/molecules/ContextMenu.svelte';
-	import IconDeviceDesktop from '@tabler/icons-svelte/icons/device-desktop';
-	import IconHelp from '@tabler/icons-svelte/icons/help';
-	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
-	import IconMoon from '@tabler/icons-svelte/icons/moon';
-	import IconSun from '@tabler/icons-svelte/icons/sun';
+	import AppMenu from '$components/organisms/AppMenu.svelte';
 	import type { QueueSummary } from '../../lib/stores/queue.svelte';
 	import SearchBox from '$components/molecules/SearchBox.svelte';
 	import SyncIndicator from '$components/molecules/SyncIndicator.svelte';
-	import type { ThemeMode } from '../../lib/db/settings';
-	import { themeStore } from '../../lib/stores/theme.svelte';
 
 	type Props = {
 		/** アカウント一覧 */
@@ -68,47 +59,7 @@
 
 	let appMenuPosition = $state<{ x: number; y: number } | null>(null);
 
-	let aboutOpen = $state(false);
-
 	let logoButton = $state<HTMLElement | null>(null);
-
-	const THEME_ITEMS: { id: `theme-${ThemeMode}`; mode: ThemeMode; label: string; icon: typeof IconSun }[] = [
-		{ id: 'theme-system', mode: 'system', label: 'テーマ: システム', icon: IconDeviceDesktop },
-		{ id: 'theme-dark', mode: 'dark', label: 'テーマ: ダーク', icon: IconMoon },
-		{ id: 'theme-light', mode: 'light', label: 'テーマ: ライト', icon: IconSun },
-	];
-
-	const appMenuItems = $derived([
-		{ id: 'tutorial', label: '使い方を見る', icon: IconHelp },
-		...THEME_ITEMS.map((item) => ({
-			id: item.id,
-			label: item.label,
-			icon: item.icon,
-			checked: themeStore.mode === item.mode,
-		})),
-		{ id: 'about', label: 'このアプリについて', icon: IconInfoCircle },
-	]);
-
-	/**
-	 * アプリメニューの項目を実行する
-	 * @param id - 選ばれた項目の識別子
-	 */
-	const handleAppMenuSelect = (id: string) => {
-		if (id === 'tutorial') {
-			onshowtutorial();
-			return;
-		}
-
-		if (id === 'about') {
-			aboutOpen = true;
-			return;
-		}
-
-		const theme = THEME_ITEMS.find((item) => item.id === id);
-		if (theme !== undefined) {
-			const _ = themeStore.set(theme.mode);
-		}
-	};
 
 	/** ロゴの位置に合わせてアプリメニューを開閉する(開いている時は閉じる) */
 	const handleLogoClick = () => {
@@ -154,34 +105,14 @@
 	</div>
 </header>
 
-{#if phone}
-	<ActionSheet
-		open={appMenuPosition !== null}
-		title="メニュー"
-		items={appMenuItems}
-		onselect={handleAppMenuSelect}
-		onclose={() => {
-			appMenuPosition = null;
-		}}
-	/>
-{:else}
-	<ContextMenu
-		open={appMenuPosition !== null}
-		x={appMenuPosition?.x ?? 0}
-		y={appMenuPosition?.y ?? 0}
-		items={appMenuItems}
-		anchor={logoButton}
-		onselect={handleAppMenuSelect}
-		onclose={() => {
-			appMenuPosition = null;
-		}}
-	/>
-{/if}
-
-<AboutDialog
-	open={aboutOpen}
+<AppMenu
+	position={appMenuPosition}
+	anchor={logoButton}
+	{phone}
+	{onshowtutorial}
+	{onresync}
 	onclose={() => {
-		aboutOpen = false;
+		appMenuPosition = null;
 	}}
 />
 

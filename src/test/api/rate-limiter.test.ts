@@ -19,6 +19,16 @@ const makeClock = () => {
 	};
 };
 
+describe('既定の設定', () => {
+	it('間隔の指定を省略すると既定の500msが空けられる', async () => {
+		const clock = makeClock();
+		const limiter = createRateLimiter({ sleep: clock.sleep, now: clock.now });
+		await limiter.schedule(() => Promise.resolve());
+		await limiter.schedule(() => Promise.resolve());
+		expect(clock.sleeps).toStrictEqual([500]);
+	});
+});
+
 describe('タスクの直列実行', () => {
 	it('複数のタスクは積んだ順に直列実行される', async () => {
 		const clock = makeClock();
