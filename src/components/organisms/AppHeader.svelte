@@ -1,10 +1,12 @@
 <script lang="ts">
+	import AboutDialog from '$components/molecules/AboutDialog.svelte';
 	import AccountMenu from '$components/organisms/AccountMenu.svelte';
 	import type { AccountRecord } from '../../lib/db/schema';
 	import ActionSheet from '$components/molecules/ActionSheet.svelte';
 	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 	import IconDeviceDesktop from '@tabler/icons-svelte/icons/device-desktop';
 	import IconHelp from '@tabler/icons-svelte/icons/help';
+	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
 	import IconMoon from '@tabler/icons-svelte/icons/moon';
 	import IconSun from '@tabler/icons-svelte/icons/sun';
 	import type { QueueSummary } from '../../lib/stores/queue.svelte';
@@ -64,13 +66,12 @@
 		onopenqueue,
 	}: Props = $props();
 
-	/** アプリメニューの表示位置(閉じている時はnull) */
 	let appMenuPosition = $state<{ x: number; y: number } | null>(null);
 
-	/** ロゴのボタン要素(メニューのトグルと位置決めに使う) */
+	let aboutOpen = $state(false);
+
 	let logoButton = $state<HTMLElement | null>(null);
 
-	/** テーマ項目の識別子とテーマの対応 */
 	const THEME_ITEMS: { id: `theme-${ThemeMode}`; mode: ThemeMode; label: string; icon: typeof IconSun }[] = [
 		{ id: 'theme-system', mode: 'system', label: 'テーマ: システム', icon: IconDeviceDesktop },
 		{ id: 'theme-dark', mode: 'dark', label: 'テーマ: ダーク', icon: IconMoon },
@@ -85,6 +86,7 @@
 			icon: item.icon,
 			checked: themeStore.mode === item.mode,
 		})),
+		{ id: 'about', label: 'このアプリについて', icon: IconInfoCircle },
 	]);
 
 	/**
@@ -94,6 +96,11 @@
 	const handleAppMenuSelect = (id: string) => {
 		if (id === 'tutorial') {
 			onshowtutorial();
+			return;
+		}
+
+		if (id === 'about') {
+			aboutOpen = true;
 			return;
 		}
 
@@ -170,6 +177,13 @@
 		}}
 	/>
 {/if}
+
+<AboutDialog
+	open={aboutOpen}
+	onclose={() => {
+		aboutOpen = false;
+	}}
+/>
 
 <style>
 	header {

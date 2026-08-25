@@ -99,7 +99,7 @@
 <ConfirmDialog
 	open={deleteOpen}
 	title="削除の確認"
-	message="{deleteTargets.length}件の項目を削除します。この操作は取り消せません。サーバー上からも削除されます。"
+	message="{deleteTargets.length}件の項目を削除します。この操作は取り消せません。サーバー上からも削除され、このファイルを添付したノートも同時に削除されます。"
 	confirmLabel="削除"
 	danger
 	onconfirm={handleDelete}

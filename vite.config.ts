@@ -3,9 +3,13 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { svelteTesting } from '@testing-library/svelte/vite';
+import { version } from './package.json';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+	define: {
+		APP_VERSION: JSON.stringify(version),
+	},
 	resolve: {
 		alias: {
 			$components: new URL('src/components', import.meta.url).pathname,
