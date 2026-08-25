@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatDateTime, formatFileSize } from '../../lib/utils/format';
+	import CheckboxControl from '$components/atoms/CheckboxControl.svelte';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import IconChevronRight from '@tabler/icons-svelte/icons/chevron-right';
 	import { longPress } from '../../lib/utils/long-press';
@@ -53,12 +54,8 @@
 		}
 	};
 
-	/**
-	 * チェックボックスで選択を切り替える
-	 * @param event - イベント
-	 */
-	const handleCheckbox = (event: Event) => {
-		event.stopPropagation();
+	/** チェックボックスで選択を切り替える */
+	const handleCheckbox = () => {
 		onselecttoggle?.();
 	};
 
@@ -89,12 +86,7 @@
 	{#if selectMode}
 		<!-- 選択モードの切り替え時はフェードしながら幅を広げ、右側の内容を横へ滑らせる -->
 		<span transition:revealInline={{ gap: 5 }}>
-			<input
-				type="checkbox"
-				aria-label="{name}を選択"
-				checked={selected}
-				onclick={handleCheckbox}
-			/>
+			<CheckboxControl checked={selected} label="{name}を選択" size={18} ontoggle={handleCheckbox} />
 		</span>
 	{/if}
 	<button
@@ -133,13 +125,6 @@
 		overflow: hidden;
 	}
 
-	input {
-		display: block;
-		margin: 0;
-		accent-color: var(--color-accent);
-		inline-size: 18px;
-		block-size: 18px;
-	}
 
 	button {
 		display: flex;

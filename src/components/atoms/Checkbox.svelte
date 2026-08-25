@@ -1,4 +1,6 @@
 <script lang="ts">
+	import CheckboxControl from '$components/atoms/CheckboxControl.svelte';
+
 	type Props = {
 		/** チェックボックスのラベル */
 		label: string;
@@ -10,8 +12,14 @@
 </script>
 
 <label>
-	<input type="checkbox" bind:checked />
-	<span>{label}</span>
+	<CheckboxControl
+		{checked}
+		{label}
+		ontoggle={() => {
+			checked = !checked;
+		}}
+	/>
+	<span aria-hidden="true">{label}</span>
 </label>
 
 <style>
@@ -21,19 +29,6 @@
 		gap: 8px;
 		cursor: pointer;
 		user-select: none;
-	}
-
-	input {
-		margin: 0;
-		accent-color: var(--color-accent);
-		inline-size: 16px;
-		block-size: 16px;
-		cursor: pointer;
-	}
-
-	input:focus-visible {
-		outline: 2px solid var(--color-focus);
-		outline-offset: 2px;
 	}
 
 	span {

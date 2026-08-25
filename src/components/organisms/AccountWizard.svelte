@@ -63,7 +63,7 @@
 
 <section data-overlay={overlay} transition:fade|global={{ duration: overlay ? 250 : 0 }}>
 	<div transition:popIn|global={{ duration: overlay ? 250 : 0 }}>
-		<h1>misskeyDriveManager</h1>
+		<h1>MiDriveManager</h1>
 		{#if !noticeAccepted}
 			<h2>ご利用にあたっての注意</h2>
 			{#each NOTICE_PARAGRAPHS as paragraph, index (index)}
@@ -74,7 +74,7 @@
 			</div>
 		{:else}
 			<p>
-				Misskeyのドライブを整理整頓するためのツールです。
+				Misskeyドライブを整理するためのツールです。
 				利用するサーバーのホスト名を入力して、アカウントを認証してください。
 			</p>
 			<form onsubmit={handleSubmit}>

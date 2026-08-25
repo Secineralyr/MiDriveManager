@@ -12,16 +12,19 @@ const collectForbiddenFolders = (
 	items: DriveItem[],
 ) => {
 	const forbidden = new Set<string>();
+
 	const stack = items.filter((item) => item.kind === 'folder').map((item) => item.id);
 	while (stack.length > 0) {
 		const id = stack.pop();
 		if (id !== undefined && !forbidden.has(id)) {
 			forbidden.add(id);
+
 			for (const child of childrenMap[id] ?? []) {
 				stack.push(child.id);
 			}
 		}
 	}
+
 	return forbidden;
 };
 

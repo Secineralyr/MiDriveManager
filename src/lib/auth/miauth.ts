@@ -1,4 +1,3 @@
-/** 認証開始時に保留情報を保存するlocalStorageのキー */
 const PENDING_KEY = 'mdm:pending-miauth';
 
 /** 認証開始からコールバックまでの間に保持するセッション情報 */
@@ -103,7 +102,6 @@ export type PendingMiauth = PendingMiauthShape;
 /** MiAuthで取得するユーザー情報 */
 export type MiauthUser = MiauthUserShape;
 
-/** MiAuthで要求する権限スコープ */
 export const MIAUTH_PERMISSIONS = ['read:account', 'read:drive', 'write:drive'] as const;
 
 /**
@@ -121,9 +119,11 @@ export const normalizeHost = (input: string) => {
 	if (host === undefined || host === '') {
 		throw new Error('ホスト名を入力してください');
 	}
+
 	if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::\d+)?$/u.test(host)) {
 		throw new Error('ホスト名の形式が正しくありません');
 	}
+
 	return host;
 };
 
@@ -136,7 +136,7 @@ export const normalizeHost = (input: string) => {
  */
 export const buildMiauthUrl = (host: string, session: string, callbackUrl: string) => {
 	const url = new URL(`https://${host}/miauth/${session}`);
-	url.searchParams.set('name', 'misskeyDriveManager');
+	url.searchParams.set('name', 'MiDriveManager');
 	url.searchParams.set('permission', MIAUTH_PERMISSIONS.join(','));
 	url.searchParams.set('callback', callbackUrl);
 	return url.toString();
@@ -154,6 +154,7 @@ export const startMiauthSession = (hostInput: string, callbackUrl: string) => {
 	const host = normalizeHost(hostInput);
 	const session = crypto.randomUUID();
 	const pending: PendingMiauth = { session, host };
+
 	localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 	return buildMiauthUrl(host, session, callbackUrl);
 };
@@ -185,11 +186,13 @@ export const completeMiauth = async (pending: PendingMiauth) => {
 	if (!res.ok) {
 		throw new Error(`認証の確認に失敗しました(HTTP ${res.status})`);
 	}
+
 	// unknownを使う理由: res.json()の戻り値はany型のため、unknownで受けて形状を検証する
 	const body: unknown = await res.json();
 	const result = parseCheckResponse(body);
 	if (result === null) {
 		throw new Error('認証が完了していません。もう一度お試しください');
 	}
+
 	return result;
 };

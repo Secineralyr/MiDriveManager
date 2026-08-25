@@ -11,6 +11,22 @@ const reset = async () => {
 	await themeStore.set('system');
 };
 
+/**
+ * theme-colorメタタグ(既定とライト用)をヘッドへ追加する
+ * @returns 追加したメタタグ
+ */
+const appendThemeColorMetas = () => {
+	const base = document.createElement('meta');
+	base.name = 'theme-color';
+	base.content = '#1f1f1f';
+	const light = document.createElement('meta');
+	light.name = 'theme-color';
+	light.content = '#f2f2f2';
+	light.setAttribute('media', '(prefers-color-scheme: light)');
+	document.head.append(base, light);
+	return { base, light };
+};
+
 describe('テーマストア', () => {
 	beforeEach(reset);
 
@@ -19,6 +35,20 @@ describe('テーマストア', () => {
 		expect(themeStore.mode).toBe('dark');
 		expect(document.documentElement.dataset.theme).toBe('dark');
 		await expect(getThemeMode()).resolves.toBe('dark');
+	});
+
+	it('手動選択はtheme-colorメタを選んだ色にし、システムでは既定へ戻す', async () => {
+		const { base, light } = appendThemeColorMetas();
+
+		await themeStore.set('light');
+		expect(base.content).toBe('#f2f2f2');
+		expect(light.content).toBe('#f2f2f2');
+
+		await themeStore.set('system');
+		expect(base.content).toBe('#1f1f1f');
+		expect(light.content).toBe('#f2f2f2');
+		base.remove();
+		light.remove();
 	});
 
 	it('システムを選ぶと属性が外れ、読み込みで保存済みの選択が反映される', async () => {

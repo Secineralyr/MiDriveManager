@@ -110,7 +110,7 @@ textarea {
 	user-select: text;
 }
 
-/* 画像は長押しのコールアウトやドラッグの複製を出さない(アイコンやサムネイルの長押しをアプリの操作に使うため) */
+/* アイコンやサムネイルの長押しをアプリの操作に使うため画像は長押しのコールアウトやドラッグの複製を出さない */
 img {
 	-webkit-user-drag: none;
 	-webkit-touch-callout: none;

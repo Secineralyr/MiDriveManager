@@ -47,7 +47,7 @@ describe('認証URLの組み立て', () => {
 		const url = new URL(buildMiauthUrl('misskey.io', 'session-id', 'https://app.example/'));
 		expect(url.origin).toBe('https://misskey.io');
 		expect(url.pathname).toBe('/miauth/session-id');
-		expect(url.searchParams.get('name')).toBe('misskeyDriveManager');
+		expect(url.searchParams.get('name')).toBe('MiDriveManager');
 		expect(url.searchParams.get('permission')).toBe('read:account,read:drive,write:drive');
 		expect(url.searchParams.get('callback')).toBe('https://app.example/');
 	});

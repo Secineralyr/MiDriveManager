@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
+	import CheckboxControl from '$components/atoms/CheckboxControl.svelte';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
 	import { fade } from 'svelte/transition';
@@ -93,12 +94,8 @@
 		onopen?.();
 	};
 
-	/**
-	 * チェックボックスで選択を切り替える(他の選択は保ったまま)
-	 * @param event - イベント
-	 */
-	const handleCheckbox = (event: Event) => {
-		event.stopPropagation();
+	/** チェックボックスで選択を切り替える(他の選択は保ったまま) */
+	const handleCheckbox = () => {
 		onselect?.({ toggle: true, range: false });
 	};
 
@@ -187,16 +184,9 @@
 		<span>{name}</span>
 	</button>
 	{#if !touch || selectMode}
-		<input
-			type="checkbox"
-			aria-label="{name}を選択"
-			checked={selected}
-			transition:fade={{ duration: 250 }}
-			onclick={handleCheckbox}
-			ondblclick={(event) => {
-				event.stopPropagation();
-			}}
-		/>
+		<span class="check" data-checked={selected} transition:fade={{ duration: 250 }}>
+			<CheckboxControl checked={selected} label="{name}を選択" size={16} ontoggle={handleCheckbox} />
+		</span>
 	{/if}
 </div>
 
@@ -240,7 +230,7 @@
 		outline-offset: -2px;
 	}
 
-	span:first-child {
+	button > span:first-child {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -258,7 +248,7 @@
 		inline-size: 100%;
 	}
 
-	span:last-child {
+	button > span:last-child {
 		overflow: hidden;
 		padding: 8px 10px;
 		font-size: 0.85rem;
@@ -275,29 +265,21 @@
 		min-width: 0;
 	}
 
-	div > input {
-		display: block;
+	/* チェックボックスはカードの左上に重ね、ホバー・選択中・選択モード中だけ表示する */
+	.check {
+		display: inline-flex;
 		position: absolute;
 		top: 8px;
 		left: 8px;
 		z-index: 1;
-		margin: 0;
-		accent-color: var(--color-accent);
-		inline-size: 16px;
-		block-size: 16px;
 		opacity: 0;
-		cursor: pointer;
 		transition: opacity 250ms ease;
 	}
 
-	div:hover > input,
-	div > input:checked,
-	div > input:focus-visible {
-		opacity: 1;
-	}
-
-	/* 選択モード中(タッチ操作)はホバーに関わらず常に表示する */
-	div[data-selectmode='true'] > input {
+	div:hover > .check,
+	.check[data-checked='true'],
+	.check:focus-within,
+	div[data-selectmode='true'] > .check {
 		opacity: 1;
 	}
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
 	import { formatDateTime, formatFileSize } from '../../lib/utils/format';
+	import CheckboxControl from '$components/atoms/CheckboxControl.svelte';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
 	import { longPress } from '../../lib/utils/long-press';
@@ -98,12 +99,8 @@
 		onopenmenu?.(position);
 	};
 
-	/**
-	 * チェックボックスで選択を切り替える(他の選択は保ったまま)
-	 * @param event - イベント
-	 */
-	const handleCheckbox = (event: Event) => {
-		event.stopPropagation();
+	/** チェックボックスで選択を切り替える(他の選択は保ったまま) */
+	const handleCheckbox = () => {
 		onselect?.({ toggle: true, range: false });
 	};
 
@@ -181,15 +178,7 @@
 	aria-selected={showSelected}
 >
 	<td data-hidden={!showCheckbox}>
-		<input
-			type="checkbox"
-			aria-label="{name}を選択"
-			checked={selected}
-			onclick={handleCheckbox}
-			ondblclick={(event) => {
-				event.stopPropagation();
-			}}
-		/>
+		<CheckboxControl checked={selected} label="{name}を選択" size={15} ontoggle={handleCheckbox} />
 	</td>
 	<td>
 		<FileTypeIcon {folder} {mimeType} />
@@ -259,15 +248,6 @@
 	td:nth-child(3),
 	td:nth-child(4) {
 		color: var(--color-text-muted);
-	}
-
-	input {
-		display: block;
-		margin: 0;
-		accent-color: var(--color-accent);
-		inline-size: 15px;
-		block-size: 15px;
-		cursor: pointer;
 	}
 
 </style>

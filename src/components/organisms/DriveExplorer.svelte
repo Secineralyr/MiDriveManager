@@ -427,6 +427,13 @@
 		min-height: 40px;
 	}
 
+	/* タッチ端末では選択バーを大きくしている(44px)ため、枠も揃えて切り替え時に一覧がズレないようにする */
+	@media (pointer: coarse) {
+		main > div:first-of-type {
+			min-height: 44px;
+		}
+	}
+
 	main[data-dropover='true'] {
 		outline: 2px solid var(--color-accent);
 		outline-offset: -2px;

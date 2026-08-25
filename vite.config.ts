@@ -18,11 +18,11 @@ export default defineConfig({
 		// oxlint-disable-next-line new-cap - VitePWAの関数名でエラーになるため
 		VitePWA({
 			registerType: 'autoUpdate',
-			includeAssets: ['favicon.svg'],
+			includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
 			manifest: {
-				name: 'misskeyDriveManager',
-				short_name: 'DriveManager',
-				description: 'Misskeyのドライブ管理ツール',
+				name: 'MiDriveManager',
+				short_name: 'MiDriveManager',
+				description: 'Misskeyドライブ整理ツール',
 				lang: 'ja',
 				display: 'standalone',
 				theme_color: '#1f1f1f',
