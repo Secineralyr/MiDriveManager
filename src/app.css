@@ -126,3 +126,28 @@ img {
 	padding-right: env(safe-area-inset-right);
 	padding-left: env(safe-area-inset-left);
 }
+
+/* テーマ切替のクロスフェード */
+:root[data-theme-changing] {
+	view-transition-name: theme-changing;
+}
+
+::view-transition-new(theme-changing) {
+	z-index: 1;
+}
+
+::view-transition-old(theme-changing) {
+	z-index: 2;
+	animation: theme-changing-old 500ms ease;
+	animation-fill-mode: forwards;
+}
+
+@keyframes theme-changing-old {
+	0% {
+		opacity: 1;
+	}
+
+	100% {
+		opacity: 0;
+	}
+}

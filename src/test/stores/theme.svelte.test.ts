@@ -64,3 +64,22 @@ describe('テーマストア', () => {
 		expect(document.documentElement.dataset.theme).toBe('light');
 	});
 });
+
+describe('テーマストアの起動時色連携', () => {
+	beforeEach(reset);
+
+	it('setとloadはテーマの選択をlocalStorageへ写す', async () => {
+		await themeStore.set('dark');
+		expect(localStorage.getItem('mdm:theme-mode')).toBe('dark');
+
+		localStorage.removeItem('mdm:theme-mode');
+		await themeStore.load();
+		expect(localStorage.getItem('mdm:theme-mode')).toBe('dark');
+	});
+
+	it('テーマ適用時に起動スクリプトのインライン背景色を除去する', async () => {
+		document.body.style.backgroundColor = 'hsl(0 0% 95%)';
+		await themeStore.set('dark');
+		expect(document.body.style.backgroundColor).toBe('');
+	});
+});

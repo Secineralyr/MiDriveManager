@@ -10,7 +10,6 @@
 		<meta name="theme-color" content="#1f1f1f" />
 		<meta name="theme-color" content="#f2f2f2" media="(prefers-color-scheme: light)" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-title" content="MiDriveManager" />
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,6 +20,24 @@
 		<title>MiDriveManager</title>
 	</head>
 	<body>
+		<script>
+			// テーマの背景色を初回描画前に適用
+			// NOTE: iOSのステータスバーは初回描画時点のbodyの背景色が使用され、以後変更を反映しないため
+			(() => {
+				try {
+					const mode = localStorage.getItem('mdm:theme-mode');
+					if (mode !== 'dark' && mode !== 'light') {
+						return;
+					}
+
+					// --color-bgと同じ色
+					const colors = { dark: 'hsl(0 0% 10%)', light: 'hsl(0 0% 95%)' };
+					document.body.style.backgroundColor = colors[mode];
+				} catch {
+					// localStorageが読めない場合CSSの既定
+				}
+			})();
+		</script>
 		<div id="app"></div>
 		<script type="module" src="/src/main.ts"></script>
 	</body>
