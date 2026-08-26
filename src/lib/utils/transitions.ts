@@ -9,6 +9,10 @@ const START_SCALE = 0.9;
 // 縮小ブラー量
 const START_BLUR_PX = 4;
 
+// ステップ切替スライド移動量
+const STEP_OFFSET_PX = 60;
+const STEP_DURATION_MS = 500;
+
 /**
  * メニューやポップアップの出入りのトランジション
  * ブラーのかかった縮小状態から、拡大しながら不透明度を上げてフェードする
@@ -92,3 +96,41 @@ export const slidePanel = (node: Element): TransitionConfig => {
 		css: (t, u) => `margin-right: ${-u * width}px; transform: translateX(${u * width}px);`,
 	};
 };
+
+/**
+ * ウィザードなどのステップ切替の入場トランジション
+ * 右からフェードしながらスライドして登場する(退場側のstepOutと対で使う)
+ * @param _node - 対象の要素(使わない)
+ * @param params - 時間の上書き
+ * @returns トランジションの設定
+ */
+export const stepIn = (
+	_node: Element,
+	params: {
+		/** 出入りの時間(ミリ秒) */
+		duration?: number;
+	} = {},
+): TransitionConfig => ({
+	duration: params.duration ?? STEP_DURATION_MS,
+	easing: cubicOut,
+	css: (t, u) => `opacity: ${t}; transform: translateX(${u * STEP_OFFSET_PX}px);`,
+});
+
+/**
+ * ウィザードなどのステップ切替の退場トランジション
+ * 左へフェードしながらスライドして消える(入場側のstepInと対で使う)
+ * @param _node - 対象の要素(使わない)
+ * @param params - 時間の上書き
+ * @returns トランジションの設定
+ */
+export const stepOut = (
+	_node: Element,
+	params: {
+		/** 出入りの時間(ミリ秒) */
+		duration?: number;
+	} = {},
+): TransitionConfig => ({
+	duration: params.duration ?? STEP_DURATION_MS,
+	easing: cubicOut,
+	css: (t, u) => `opacity: ${t}; transform: translateX(${-u * STEP_OFFSET_PX}px);`,
+});
