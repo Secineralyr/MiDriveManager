@@ -58,6 +58,13 @@
 		onclosemove: () => void;
 		/** 移動先を確定した時の処理 */
 		onmove: (targetFolderId: string | null) => void;
+		/** 移動先ダイアログ内でのフォルダ作成(MoveSheetへ中継。省略時はボタンを出さない) */
+		oncreatemovefolder?: (input: {
+			/** フォルダ名 */
+			name: string;
+			/** 親フォルダID(ルート直下はnull) */
+			parentId: string | null;
+		}) => Promise<string | null>;
 	};
 
 	let {
@@ -82,6 +89,7 @@
 		currentFolderId,
 		onclosemove,
 		onmove,
+		oncreatemovefolder,
 	}: Props = $props();
 
 	const menuItems = $derived(buildSelectionMenu(targets, { details: detailsAction }));
@@ -140,4 +148,5 @@
 	onclose={onclosemove}
 	{onmove}
 	variant={phone ? 'sheet' : 'dialog'}
+	oncreatefolder={oncreatemovefolder}
 />

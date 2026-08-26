@@ -1,5 +1,10 @@
 import type { ActionsClient, DriveItem, FileMetadata } from '../services/drive-actions';
-import { renameFile, renameFolder, updateFileMetadata } from '../services/drive-actions';
+import {
+	createFolder,
+	renameFile,
+	renameFolder,
+	updateFileMetadata,
+} from '../services/drive-actions';
 import type { AccountRecord } from '../db/schema';
 import { createDriveClient } from '../api/client';
 import { driveStore } from './drive.svelte';
@@ -69,6 +74,39 @@ const withAction = async (accountId: string, task: () => Promise<void>) => {
 	return ok;
 };
 
+/**
+ * フォルダを作成して作成したフォルダIDを返す(失敗時はエラーメッセージを記録してnull)
+ * @param account - 対象アカウント
+ * @param input - フォルダ名と親フォルダID
+ * @param clientFactory - APIクライアントの生成関数
+ * @returns 作成したフォルダID。失敗した場合はnull
+ */
+const runCreateFolder = async (
+	account: AccountRecord,
+	input: {
+		/** フォルダ名 */
+		name: string;
+		/** 親フォルダID(ルート直下はnull) */
+		parentId: string | null;
+	},
+	clientFactory: ActionsClientFactory,
+) => {
+	try {
+		const record = await createFolder(
+			account.id,
+			clientFactory(account.host, account.token),
+			input,
+		);
+		
+		await refreshIfShowing(account.id);
+		
+		return record.id;
+	} catch (error) {
+		state.error = error instanceof Error ? error.message : '操作に失敗しました';
+		return null;
+	}
+};
+
 /** ドライブの基本操作(作成・リネーム・メタデータ編集)を実行するストア */
 export const driveActionsStore = {
 	/**
@@ -90,6 +128,37 @@ export const driveActionsStore = {
 	/** エラーメッセージを消す */
 	clearError() {
 		state.error = null;
+	},
+
+	/**
+	 * フォルダを作成して作成したフォルダIDを返す(移動先選択ダイアログ内での即時作成用)
+	 * 失敗した場合はエラーメッセージを状態へ記録してnullを返す(トーストへはAppOverlaysが転送する)
+	 * @param account - 対象アカウント
+	 * @param input - フォルダ名と親フォルダID
+	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
+	 * @returns 作成したフォルダID。失敗した場合はnull
+	 */
+	async createFolderAt(
+		account: AccountRecord,
+		input: {
+			/** フォルダ名 */
+			name: string;
+			/** 親フォルダID(ルート直下はnull) */
+			parentId: string | null;
+		},
+		clientFactory: ActionsClientFactory = createDriveClient,
+	) {
+		if (state.busy) {
+			return null;
+		}
+
+		state.busy = true;
+		state.error = null;
+		
+		const createdId = await runCreateFolder(account, input, clientFactory);
+		
+		state.busy = false;
+		return createdId;
 	},
 
 	/**

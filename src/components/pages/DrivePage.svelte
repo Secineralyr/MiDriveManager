@@ -408,6 +408,7 @@
 		moveOpen = false;
 	}}
 	onmove={handleMoveSelection}
+	oncreatemovefolder={(input) => driveActionsStore.createFolderAt(account, input)}
 />
 
 <DriveActionDialogs

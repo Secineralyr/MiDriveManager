@@ -78,6 +78,45 @@ describe('基本操作ストア', () => {
 	});
 });
 
+describe('移動先ダイアログ用のフォルダ作成', () => {
+	beforeEach(async () => {
+		await closeDatabase();
+		stubIndexedDb();
+	});
+
+	it('作成に成功するとフォルダIDを返し、表示中のドライブへ反映される', async () => {
+		await driveStore.openAccount('a1');
+		const created: entities.DriveFolder = {
+			id: 'new1',
+			createdAt: '2026-08-23T00:00:00.000Z',
+			name: '新規',
+			parentId: null,
+		};
+		const id = await driveActionsStore.createFolderAt(
+			account,
+			{ name: '新規', parentId: null },
+			() => makeClient({ driveFoldersCreate: () => Promise.resolve(created) }),
+		);
+		expect(id).toBe('new1');
+		expect(driveActionsStore.error).toBeNull();
+		expect(driveStore.childFolders.map((folder) => folder.id)).toStrictEqual(['new1']);
+	});
+
+	it('失敗するとnullを返しエラーメッセージが残る', async () => {
+		const id = await driveActionsStore.createFolderAt(
+			account,
+			{ name: '新規', parentId: null },
+			() =>
+				makeClient({
+					driveFoldersCreate: () => Promise.reject(new Error('作成に失敗しました')),
+				}),
+		);
+		expect(id).toBeNull();
+		expect(driveActionsStore.error).toBe('作成に失敗しました');
+		driveActionsStore.clearError();
+	});
+});
+
 describe('基本操作ストアの多重実行', () => {
 	beforeEach(async () => {
 		await closeDatabase();

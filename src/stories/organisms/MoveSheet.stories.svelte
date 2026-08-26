@@ -66,3 +66,16 @@
 		onmove: () => {},
 	}}
 />
+
+<Story
+	name="フォルダ作成ボタン付き"
+	args={{
+		open: true,
+		childrenMap,
+		currentFolderId: 'd1',
+		items: [{ kind: 'file', id: 'f1' }],
+		onclose: () => {},
+		onmove: () => {},
+		oncreatefolder: () => Promise.resolve(null),
+	}}
+/>
