@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDatabase, openDatabase } from '../../lib/db/database';
 import type { ActionsClient } from '../../lib/services/drive-actions';
 import { clipboardStore } from '../../lib/stores/clipboard.svelte';
-import { queueStore } from '../../lib/stores/queue.svelte';
 import { stubIndexedDb } from '../indexeddb-test-util';
 
 /** テスト用のアカウント */
@@ -79,12 +78,10 @@ const reset = async () => {
 describe('クリップボードの保持', () => {
 	beforeEach(reset);
 
-	it('コピーと切り取りで内容が保持される', () => {
-		clipboardStore.setCopy('a1', [{ kind: 'file', id: 'f1' }]);
-		expect(clipboardStore.mode).toBe('copy');
-		expect(clipboardStore.hasContent).toBe(true);
+	it('切り取りで内容が保持され、クリアで空になる', () => {
 		clipboardStore.setCut('a1', [{ kind: 'folder', id: 'd1' }]);
 		expect(clipboardStore.mode).toBe('cut');
+		expect(clipboardStore.hasContent).toBe(true);
 		clipboardStore.clear();
 		expect(clipboardStore.hasContent).toBe(false);
 	});
@@ -117,54 +114,5 @@ describe('切り取りの貼り付け', () => {
 		expect(result).toBe('error');
 		expect(clipboardStore.error).toBe('切り取った項目は同じアカウント内にのみ移動できます');
 		expect(moveBulk).not.toHaveBeenCalled();
-	});
-});
-
-describe('コピーの貼り付け', () => {
-	beforeEach(reset);
-
-	it('キャッシュのURLからの取り込みがキューへ積まれクリップボードは保持される', async () => {
-		const { client, uploadFromUrl } = makeClient();
-		clipboardStore.setCopy('a1', [{ kind: 'file', id: 'f1' }]);
-		const result = await clipboardStore.pasteInto(account, 'target', () => client);
-		expect(result).toBe('copied');
-		await queueStore.whenIdle();
-		expect(uploadFromUrl).toHaveBeenCalledWith({
-			url: 'https://misskey.example/files/f1',
-			folderId: 'target',
-			isSensitive: false,
-			comment: null,
-		});
-		expect(clipboardStore.hasContent).toBe(true);
-	});
-
-	it('フォルダだけのコピーはエラーになる', async () => {
-		const { client } = makeClient();
-		clipboardStore.setCopy('a1', [{ kind: 'folder', id: 'd1' }]);
-		const result = await clipboardStore.pasteInto(account, null, () => client);
-		expect(result).toBe('error');
-		expect(clipboardStore.error).toBe('フォルダはコピーできません');
-	});
-
-	it('コピー元のファイルがキャッシュにない場合はエラーになる', async () => {
-		const { client } = makeClient();
-		clipboardStore.setCopy('a1', [{ kind: 'file', id: '存在しない' }]);
-		const result = await clipboardStore.pasteInto(account, null, () => client);
-		expect(result).toBe('error');
-		expect(clipboardStore.error).toBe('コピー元のファイルが見つかりません');
-	});
-});
-
-describe('エラーの消去', () => {
-	beforeEach(reset);
-
-	it('clearErrorでエラーだけが消え、保持している項目は残る', async () => {
-		const { client } = makeClient();
-		clipboardStore.setCopy('a1', [{ kind: 'folder', id: 'd1' }]);
-		await clipboardStore.pasteInto(account, null, () => client);
-		expect(clipboardStore.error).toBe('フォルダはコピーできません');
-		clipboardStore.clearError();
-		expect(clipboardStore.error).toBeNull();
-		expect(clipboardStore.hasContent).toBe(true);
 	});
 });

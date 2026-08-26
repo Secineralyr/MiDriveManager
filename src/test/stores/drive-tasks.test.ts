@@ -6,7 +6,6 @@ import { driveStore } from '../../lib/stores/drive.svelte';
 import { driveTasks } from '../../lib/stores/drive-tasks';
 import { queueStore } from '../../lib/stores/queue.svelte';
 import { stubIndexedDb } from '../indexeddb-test-util';
-import { syncStore } from '../../lib/stores/sync.svelte';
 
 /** テスト用のアカウント */
 const account: AccountRecord = {
@@ -143,41 +142,6 @@ describe('削除のキュー投入', () => {
 	});
 });
 
-describe('複製のキュー投入', () => {
-	beforeEach(reset);
-
-	it('ファイルはそれぞれ元のフォルダへ複製され、完了後に全量同期が開始される', async () => {
-		const db = await openDatabase();
-		await db.put('files', { ...makeFile('f2'), folderId: 'd1', folderKey: 'd1' });
-		const { client, uploadFromUrl } = makeClient();
-		const id = driveTasks.duplicateItems(
-			account,
-			[
-				{ kind: 'file', id: 'f1' },
-				{ kind: 'file', id: 'f2' },
-			],
-			() => client,
-		);
-		expect(id).not.toBeNull();
-		expect(queueStore.tasks.at(-1)?.label).toBe('2件の複製');
-
-		await queueStore.whenIdle();
-		expect(uploadFromUrl).toHaveBeenCalledWith({
-			url: 'https://misskey.example/files/f2',
-			folderId: 'd1',
-			isSensitive: false,
-			comment: null,
-		});
-		expect(syncStore.accountId).toBe('a1');
-	});
-
-	it('フォルダだけの場合はキューへ積まれない', () => {
-		const { client } = makeClient();
-		const id = driveTasks.duplicateItems(account, [{ kind: 'folder', id: 'd1' }], () => client);
-		expect(id).toBeNull();
-	});
-});
-
 describe('移動の事前選別', () => {
 	beforeEach(reset);
 
@@ -217,7 +181,7 @@ describe('移動の事前選別', () => {
 	});
 });
 
-describe('移動と複製のキュー投入', () => {
+describe('移動のキュー投入', () => {
 	beforeEach(reset);
 
 	it('移動はキューで実行され、失敗した場合はエラーがタスクに残る', async () => {
@@ -235,24 +199,5 @@ describe('移動と複製のキュー投入', () => {
 		expect(moveBulk).toHaveBeenCalledWith({ fileIds: ['f1'], folderId: 'd1' });
 		expect(findTask(id).status).toBe('failed');
 		expect(findTask(id).error).toBe('移動できませんでした');
-	});
-
-	it('複製はキューで実行され、完了後に全量同期が開始される', async () => {
-		const { client, uploadFromUrl } = makeClient();
-		const id = driveTasks.copyFiles(
-			account,
-			{ files: [makeFile('f1')], targetFolderId: null },
-			() => client,
-		);
-
-		await queueStore.whenIdle();
-		expect(uploadFromUrl).toHaveBeenCalledWith({
-			url: 'https://misskey.example/files/f1',
-			folderId: null,
-			isSensitive: false,
-			comment: null,
-		});
-		expect(findTask(id).status).toBe('done');
-		expect(syncStore.accountId).toBe('a1');
 	});
 });

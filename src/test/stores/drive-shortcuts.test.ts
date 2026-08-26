@@ -114,11 +114,11 @@ describe('キー入力のショートカット', () => {
 		expect(selectionStore.keys).toStrictEqual(['file:f1', 'file:f2']);
 	});
 
-	it('Ctrl+Cで選択中の項目がコピーとして保持され、OSクリップボードにはファイル名が書き込まれる', () => {
+	it('Ctrl+Xで選択中の項目が切り取りとして保持され、OSクリップボードにはファイル名が書き込まれる', () => {
 		const { shortcuts } = makeShortcuts();
 		selectionStore.selectAll(['file:f1', 'file:f2']);
-		shortcuts.handleKeydown(keyInput('c', true));
-		expect(clipboardStore.mode).toBe('copy');
+		shortcuts.handleKeydown(keyInput('x', true));
+		expect(clipboardStore.mode).toBe('cut');
 		expect(clipboardStore.items).toStrictEqual([
 			{ kind: 'file', id: 'f1' },
 			{ kind: 'file', id: 'f2' },

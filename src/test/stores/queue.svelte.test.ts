@@ -123,7 +123,7 @@ describe('操作キューの再試行', () => {
 
 	it('再試行すると同じ実行処理が再び呼ばれ、成功すればdoneになる', async () => {
 		const { run, counter } = makeFlakyRun();
-		const id = queueStore.enqueue({ account, kind: 'copy', label: '2回目で成功', run });
+		const id = queueStore.enqueue({ account, kind: 'move', label: '2回目で成功', run });
 		await queueStore.whenIdle();
 		expect(findTask(id).status).toBe('failed');
 

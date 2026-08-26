@@ -379,8 +379,6 @@
 			downloadSelection();
 		} else if (action === 'details') {
 			detailsSheetOpen = true;
-		} else if (action === 'duplicate') {
-			driveTasks.duplicateItems(account, deleteTargets);
 		} else if (action === 'move') {
 			moveOpen = true;
 		} else {

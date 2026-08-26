@@ -1,12 +1,7 @@
 import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDatabase, openDatabase } from '../../lib/db/database';
-import {
-	collectDuplicateSources,
-	copyFilesToFolder,
-	moveItems,
-	selectItemsToMove,
-} from '../../lib/services/drive-move';
+import { moveItems, selectItemsToMove } from '../../lib/services/drive-move';
 import type { ActionsClient } from '../../lib/services/drive-actions';
 import { stubIndexedDb } from '../indexeddb-test-util';
 
@@ -182,22 +177,6 @@ describe('移動の事前選別', () => {
 	});
 });
 
-describe('複製の対象収集', () => {
-	beforeEach(seed);
-
-	it('ファイルのキャッシュだけが集まり、1件も見つからない場合はエラーになる', async () => {
-		const files = await collectDuplicateSources('a1', [
-			{ kind: 'file', id: 'f1' },
-			{ kind: 'folder', id: 'd1' },
-		]);
-		expect(files.map((file) => file.id)).toStrictEqual(['f1']);
-
-		await expect(collectDuplicateSources('a1', [{ kind: 'file', id: 'nope' }])).rejects.toThrow(
-			'複製できるファイルが見つかりません',
-		);
-	});
-});
-
 describe('移動の制約', () => {
 	beforeEach(seed);
 
@@ -221,39 +200,5 @@ describe('移動の制約', () => {
 				targetFolderId: 'target',
 			}),
 		).rejects.toThrow('フォルダを自身の中へ移動することはできません');
-	});
-});
-
-describe('ファイルの複製(URL取り込み)', () => {
-	beforeEach(seed);
-
-	it('各ファイルのURLとメタデータで取り込みが呼ばれる', async () => {
-		const { client, uploadFromUrl } = makeMoveClient();
-		await copyFilesToFolder(client, {
-			files: [makeFile('f1', null)],
-			targetFolderId: 'target',
-		});
-		expect(uploadFromUrl).toHaveBeenCalledWith({
-			url: 'https://misskey.example/files/f1',
-			folderId: 'target',
-			isSensitive: true,
-			comment: '説明あり',
-		});
-	});
-
-	it('取り込みに失敗した時点で後続は実行されない', async () => {
-		const { client, uploadFromUrl } = makeMoveClient();
-		let calls = 0;
-		uploadFromUrl.mockImplementation(() => {
-			calls += 1;
-			return Promise.reject(new Error('失敗'));
-		});
-		await expect(
-			copyFilesToFolder(client, {
-				files: [makeFile('f1', null), makeFile('f2', null)],
-				targetFolderId: null,
-			}),
-		).rejects.toThrow('失敗');
-		expect(calls).toBe(1);
 	});
 });

@@ -1,5 +1,5 @@
 /** ショートカットに割り当てられた操作 */
-type ShortcutActionShape = 'selectAll' | 'copy' | 'cut' | 'delete' | 'rename' | 'clearSelection';
+type ShortcutActionShape = 'selectAll' | 'cut' | 'delete' | 'rename' | 'clearSelection';
 
 /**
  * Ctrl/Cmd併用時のキーと操作の対応
@@ -7,7 +7,6 @@ type ShortcutActionShape = 'selectAll' | 'copy' | 'cut' | 'delete' | 'rename' | 
  */
 const CTRL_SHORTCUTS: Record<string, ShortcutActionShape> = {
 	a: 'selectAll',
-	c: 'copy',
 	x: 'cut',
 };
 

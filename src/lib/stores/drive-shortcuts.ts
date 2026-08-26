@@ -67,22 +67,17 @@ const shouldIgnore = (context: ShortcutContext, target: EventTarget | null) =>
 	context.blocked() || isEditableTarget(target);
 
 /**
- * 選択中の項目をクリップボードへ入れる
- * OSクリップボードにはファイル名を書き込み、アプリ内コピーを直近のコピーにする
+ * 選択中の項目を切り取りとしてクリップボードへ入れる
+ * OSクリップボードにはファイル名を書き込む
  * @param context - ページから受け取る文脈
- * @param mode - copy(コピー)またはcut(切り取り)
  */
-const copySelection = (context: ShortcutContext, mode: 'copy' | 'cut') => {
+const cutSelection = (context: ShortcutContext) => {
 	const items = context.effectiveKeys().map((key) => parseSelectionKey(key));
 	if (items.length === 0) {
 		return;
 	}
 
-	if (mode === 'copy') {
-		clipboardStore.setCopy(context.account().id, items);
-	} else {
-		clipboardStore.setCut(context.account().id, items);
-	}
+	clipboardStore.setCut(context.account().id, items);
 
 	const names = items.map((item) => itemName(item)).filter((name) => name !== undefined);
 	const _ = writeClipboardText(names.join('\n'));
@@ -109,11 +104,8 @@ const runShortcut = (context: ShortcutContext, action: ShortcutAction) => {
 		selectAll: () => {
 			selectionStore.selectAll(context.orderedKeys());
 		},
-		copy: () => {
-			copySelection(context, 'copy');
-		},
 		cut: () => {
-			copySelection(context, 'cut');
+			cutSelection(context);
 		},
 		delete: () => {
 			if (context.effectiveKeys().length > 0) {

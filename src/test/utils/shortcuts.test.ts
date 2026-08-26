@@ -4,7 +4,6 @@ import { resolveShortcut } from '../../lib/utils/shortcuts';
 describe('ショートカットの解決', () => {
 	it('Ctrl併用のキーが対応する操作になる', () => {
 		expect(resolveShortcut({ key: 'a', ctrl: true })).toBe('selectAll');
-		expect(resolveShortcut({ key: 'c', ctrl: true })).toBe('copy');
 		expect(resolveShortcut({ key: 'x', ctrl: true })).toBe('cut');
 	});
 
@@ -24,6 +23,7 @@ describe('ショートカットの解決', () => {
 
 	it('割り当てのないキーはnullになる', () => {
 		expect(resolveShortcut({ key: 'z', ctrl: true })).toBeNull();
+		expect(resolveShortcut({ key: 'c', ctrl: true })).toBeNull();
 		expect(resolveShortcut({ key: 'a', ctrl: false })).toBeNull();
 		expect(resolveShortcut({ key: 'Enter', ctrl: false })).toBeNull();
 	});

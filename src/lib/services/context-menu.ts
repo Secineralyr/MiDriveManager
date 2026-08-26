@@ -1,7 +1,7 @@
 import type { DriveItem } from './drive-actions';
 
 /** コンテキストメニューの操作 */
-type MenuActionShape = 'details' | 'download' | 'duplicate' | 'move' | 'rename' | 'delete';
+type MenuActionShape = 'details' | 'download' | 'move' | 'rename' | 'delete';
 
 /** コンテキストメニューの項目 */
 type MenuItemShape = {
@@ -23,8 +23,8 @@ export type MenuItem = MenuItemShape;
 
 /**
  * 選択中の項目に応じたコンテキストメニューの項目を組み立てる
- * フォルダを含む場合は複製を出さず、名前の変更は1件選択の時だけ選べる
- * (コピー・切り取り・貼り付けはメニューから廃止。ショートカット(Ctrl+C/X/V)では引き続き使える)
+ * 名前の変更は1件選択の時だけ選べる
+ * (複製はサーバーのハッシュ検証により実質不可のため提供しない。切り取り→貼り付けの移動はショートカットで使える)
  * @param items - 選択中の項目
  * @param options - 追加項目の指定
  * @returns メニューの項目
@@ -36,16 +36,13 @@ export const buildSelectionMenu = (
 		details?: boolean;
 	} = {},
 ): MenuItem[] => {
-	const hasFolder = items.some((item) => item.kind === 'folder');
 	const details: MenuItem[] =
 		options.details === true
 			? [{ id: 'details', label: '詳細', disabled: items.length !== 1 }]
 			: [];
-	const duplicate: MenuItem[] = hasFolder ? [] : [{ id: 'duplicate', label: '複製' }];
 	return [
 		...details,
 		{ id: 'download', label: 'ダウンロード' },
-		...duplicate,
 		{ id: 'move', label: '移動' },
 		{ id: 'rename', label: '名前の変更', disabled: items.length !== 1 },
 		{ id: 'delete', label: '削除', danger: true },

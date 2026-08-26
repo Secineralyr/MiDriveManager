@@ -1,5 +1,4 @@
 <script module lang="ts">
-	import IconCopy from '@tabler/icons-svelte/icons/copy';
 	import IconDownload from '@tabler/icons-svelte/icons/download';
 	import IconFolderSymlink from '@tabler/icons-svelte/icons/folder-symlink';
 	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
@@ -10,7 +9,6 @@
 	export const ICONS = {
 		details: IconInfoCircle,
 		download: IconDownload,
-		duplicate: IconCopy,
 		move: IconFolderSymlink,
 		rename: IconPencil,
 		delete: IconTrash,

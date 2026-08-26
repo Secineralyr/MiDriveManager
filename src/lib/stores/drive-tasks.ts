@@ -1,21 +1,14 @@
-import type { AccountRecord, FileRecord } from '../db/schema';
 import type { ActionsClientFactory, UploadClientFactory } from './drive-task-helpers';
 import { collectDownloadEntries, downloadEntries } from '../services/download';
-import {
-	collectDuplicateSources,
-	copyFilesToFolder,
-	duplicateFiles,
-	moveItems,
-	selectItemsToMove,
-} from '../services/drive-move';
 import { createFolder, deleteItems } from '../services/drive-actions';
 import { downloadLabel, notifyExisting, uploadLabel, zipNameFor } from './drive-task-labels';
 import { filesToUploadEntries, readDroppedEntries, uploadEntries } from '../services/upload';
+import { moveItems, selectItemsToMove } from '../services/drive-move';
+import type { AccountRecord } from '../db/schema';
 import type { DriveItem } from '../services/drive-actions';
 import type { UploadEntry } from '../services/upload';
 import { createDriveClient } from '../api/client';
 import { queueStore } from './queue.svelte';
-import { syncStore } from './sync.svelte';
 import { withRefresh } from './drive-task-helpers';
 
 /** ダウンロードの取得・保存の差し替え(テスト用) */
@@ -226,71 +219,6 @@ export const driveTasks = {
 					onProgress: report,
 				}),
 			),
-		});
-	},
-
-	/**
-	 * ファイルの複製(URL取り込み)をキューへ積む
-	 * 複製はサーバー側で非同期に処理されるため、タスク完了後に全量同期を開始して反映する
-	 * @param account - 複製先のアカウント
-	 * @param input - 複製するファイルと複製先フォルダID
-	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
-	 * @returns 積んだタスクの識別子
-	 */
-	copyFiles(
-		account: AccountRecord,
-		input: {
-			/** 複製するファイルの一覧 */
-			files: FileRecord[];
-			/** 複製先のフォルダID(ルートはnull) */
-			targetFolderId: string | null;
-		},
-		clientFactory: ActionsClientFactory = createDriveClient,
-	) {
-		return queueStore.enqueue({
-			account,
-			kind: 'copy',
-			label: `${input.files.length}件の複製`,
-			run: async (report) => {
-				await copyFilesToFolder(clientFactory(account.host, account.token), {
-					...input,
-					onProgress: report,
-				});
-				syncStore.run(account);
-			},
-		});
-	},
-
-	/**
-	 * 選択したファイルをそれぞれ元のフォルダへ複製するタスクをキューへ積む(フォルダは対象外)
-	 * 複製はサーバー側で非同期に処理されるため、タスク完了後に全量同期を開始して反映する
-	 * @param account - 対象アカウント
-	 * @param items - 複製する項目の一覧(ファイル以外は無視する)
-	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
-	 * @returns 積んだタスクの識別子。ファイルが含まれない場合はnull
-	 */
-	duplicateItems(
-		account: AccountRecord,
-		items: DriveItem[],
-		clientFactory: ActionsClientFactory = createDriveClient,
-	) {
-		const fileItems = items.filter((item) => item.kind === 'file');
-		if (fileItems.length === 0) {
-			return null;
-		}
-
-		return queueStore.enqueue({
-			account,
-			kind: 'copy',
-			label: `${fileItems.length}件の複製`,
-			run: async (report) => {
-				const files = await collectDuplicateSources(account.id, fileItems);
-				await duplicateFiles(clientFactory(account.host, account.token), {
-					files,
-					onProgress: report,
-				});
-				syncStore.run(account);
-			},
 		});
 	},
 };

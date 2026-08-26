@@ -1,19 +1,18 @@
-import type { AccountRecord, FileRecord } from '../db/schema';
 import type { ActionsClient, DriveItem } from '../services/drive-actions';
+import type { AccountRecord } from '../db/schema';
 import { createDriveClient } from '../api/client';
 import { driveTasks } from './drive-tasks';
-import { getCachedFile } from '../db/drive-cache';
 
 /** 基本操作用APIクライアントの生成関数 */
 type ActionsClientFactory = (host: string, token: string) => ActionsClient;
 
 /** 貼り付けの結果 */
-type PasteResultShape = 'moved' | 'copied' | 'noop' | 'error';
+type PasteResultShape = 'moved' | 'noop' | 'error';
 
 /** クリップボードの状態 */
 type ClipboardState = {
 	/** 操作の種類(空ならnull) */
-	mode: 'copy' | 'cut' | null;
+	mode: 'cut' | null;
 	/** 保持している項目 */
 	items: DriveItem[];
 	/** 項目の取得元アカウントID(空ならnull) */
@@ -34,24 +33,6 @@ const resetContent = () => {
 	state.mode = null;
 	state.items = [];
 	state.sourceAccountId = null;
-};
-
-/**
- * クリップボードのコピー元ファイルをキャッシュから読み込む
- * @returns ファイル項目の件数と、キャッシュに残っていたファイルの一覧
- */
-const loadClipboardFiles = async () => {
-	const sourceAccountId = state.sourceAccountId ?? '';
-	const fileItems = state.items.filter((item) => item.kind === 'file');
-
-	const loaded = await Promise.all(
-		fileItems.map((item) => getCachedFile(sourceAccountId, item.id)),
-	);
-
-	return {
-		fileCount: fileItems.length,
-		files: loaded.filter((file): file is FileRecord => file !== undefined),
-	};
 };
 
 /**
@@ -76,55 +57,14 @@ const pasteCut = (
 	return 'moved';
 };
 
-/**
- * コピー貼り付けの前提を確認し、問題があればエラーメッセージを返す
- * @param fileCount - クリップボード内のファイル項目の件数
- * @param files - キャッシュから読み込めたファイル
- * @returns エラーメッセージ。問題なければnull
- */
-const validateCopySource = (fileCount: number, files: FileRecord[]) => {
-	if (fileCount === 0) {
-		return 'フォルダはコピーできません';
-	}
-
-	if (files.length === 0) {
-		return 'コピー元のファイルが見つかりません';
-	}
-
-	return null;
-};
-
-/**
- * コピーしたファイルの複製を操作キューへ積む
- * @param account - 貼り付け先のアカウント
- * @param targetFolderId - 貼り付け先のフォルダID(ルートはnull)
- * @param clientFactory - APIクライアントの生成関数
- * @returns 貼り付けの結果
- */
-const pasteCopy = async (
-	account: AccountRecord,
-	targetFolderId: string | null,
-	clientFactory: ActionsClientFactory,
-): Promise<PasteResultShape> => {
-	const { fileCount, files } = await loadClipboardFiles();
-	const validationError = validateCopySource(fileCount, files);
-	if (validationError !== null) {
-		state.error = validationError;
-		return 'error';
-	}
-
-	driveTasks.copyFiles(account, { files, targetFolderId }, clientFactory);
-	return 'copied';
-};
-
 /** 貼り付けの結果 */
 export type PasteResult = PasteResultShape;
 
-/** アプリ内クリップボード(コピー/切り取りした項目)を管理するストア */
+/** アプリ内クリップボード(切り取りした項目)を管理するストア */
 export const clipboardStore = {
 	/**
 	 * 操作の種類
-	 * @returns copy(コピー)、cut(切り取り)、null(空)のいずれか
+	 * @returns cut(切り取り)またはnull(空)
 	 */
 	get mode() {
 		return state.mode;
@@ -168,18 +108,6 @@ export const clipboardStore = {
 	},
 
 	/**
-	 * 項目をコピーとして保持する
-	 * @param accountId - 取得元アカウントID
-	 * @param items - 保持する項目
-	 */
-	setCopy(accountId: string, items: DriveItem[]) {
-		state.mode = 'copy';
-		state.items = [...items];
-		state.sourceAccountId = accountId;
-		state.error = null;
-	},
-
-	/**
 	 * 項目を切り取りとして保持する
 	 * @param accountId - 取得元アカウントID
 	 * @param items - 保持する項目
@@ -193,11 +121,11 @@ export const clipboardStore = {
 
 	/**
 	 * クリップボードの内容を表示中フォルダへ貼り付ける
-	 * 切り取りは移動、コピーはURL取り込みによる複製として操作キューへ積む(実行はキューが行う)
+	 * 切り取りは移動として操作キューへ積む(実行はキューが行う)
 	 * @param account - 貼り付け先のアカウント
 	 * @param targetFolderId - 貼り付け先のフォルダID(ルートはnull)
 	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
-	 * @returns 貼り付けの結果(movedとcopiedはキューへ積めたことを表す)
+	 * @returns 貼り付けの結果(movedはキューへ積めたことを表す)
 	 */
 	pasteInto(
 		account: AccountRecord,
@@ -209,11 +137,7 @@ export const clipboardStore = {
 		}
 
 		state.error = null;
-		if (state.mode === 'cut') {
-			return Promise.resolve(pasteCut(account, targetFolderId, clientFactory));
-		}
-
-		return pasteCopy(account, targetFolderId, clientFactory);
+		return Promise.resolve(pasteCut(account, targetFolderId, clientFactory));
 	},
 
 	/** クリップボードを空にする */
