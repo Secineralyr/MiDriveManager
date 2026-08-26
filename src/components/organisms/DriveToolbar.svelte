@@ -5,6 +5,7 @@
 	import IconArrowsSort from '@tabler/icons-svelte/icons/arrows-sort';
 	import IconButton from '$components/atoms/IconButton.svelte';
 	import IconFolderPlus from '@tabler/icons-svelte/icons/folder-plus';
+	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
 	import IconLayoutSidebar from '@tabler/icons-svelte/icons/layout-sidebar';
 	import IconUpload from '@tabler/icons-svelte/icons/upload';
 	import IconX from '@tabler/icons-svelte/icons/x';
@@ -44,6 +45,10 @@
 		onopensort?: () => void;
 		/** スマートフォン表示かどうか(パンくずの省略メニューをシートにする) */
 		phone?: boolean;
+		/** 詳細パネルを開いているか(デスクトップのトグルボタンの状態表示用) */
+		detailsOpen?: boolean;
+		/** 詳細パネルの開閉(デスクトップ用。ボタンはデスクトップでのみ表示) */
+		ontoggledetails?: () => void;
 	};
 
 	let {
@@ -63,6 +68,8 @@
 		ontoggleselect,
 		onopensort,
 		phone = false,
+		detailsOpen = false,
+		ontoggledetails,
 	}: Props = $props();
 
 	let fileInput = $state<HTMLInputElement | null>(null);
@@ -130,6 +137,15 @@
 					<IconArrowsSort size={18} />
 				</IconButton>
 			</span>
+			<span data-details-toggle>
+				<IconButton
+					label={detailsOpen ? '詳細パネルを閉じる' : '詳細パネルを開く'}
+					active={detailsOpen}
+					onclick={ontoggledetails}
+				>
+					<IconInfoCircle size={18} />
+				</IconButton>
+			</span>
 			<ViewModeSwitch {viewMode} onchange={onviewmode} />
 		</span>
 	</div>
@@ -188,6 +204,13 @@
 	@media (pointer: coarse), (max-width: 640px) {
 		span[data-select-toggle] {
 			display: inline-flex;
+		}
+	}
+
+	/* 詳細パネルのトグルはデスクトップ(マウス操作の広い画面)でのみ表示する */
+	@media (pointer: coarse), (max-width: 640px) {
+		span[data-details-toggle] {
+			display: none;
 		}
 	}
 

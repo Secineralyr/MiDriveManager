@@ -31,7 +31,7 @@
 	let { account }: Props = $props();
 
 	let previewFile = $state<FileRecord | null>(null);
-	let detailsClosed = $state(false);
+	let desktopDetailsOpen = $state(true);
 	let createOpen = $state(false);
 	let renameOpen = $state(false);
 	let deleteOpen = $state(false);
@@ -54,7 +54,7 @@
 			return detailsSheetOpen;
 		}
 
-		return effectiveKeys.length > 0 && !detailsClosed;
+		return desktopDetailsOpen;
 	});
 
 	// 検索中は検索結果、それ以外は表示中フォルダの内容を一覧に出す(並び替えは共通)
@@ -288,11 +288,6 @@
 		}
 	});
 
-	$effect(() => {
-		if (selectionStore.last !== null) {
-			detailsClosed = false;
-		}
-	});
 </script>
 
 <svelte:window
@@ -315,6 +310,9 @@
 	selectedKeys={effectiveKeys}
 	{detailTarget}
 	detailsOpen={detailsPanelOpen}
+	ontoggledetails={() => {
+		desktopDetailsOpen = !desktopDetailsOpen;
+	}}
 	{selectionSize}
 	onnavigate={handleNavigate}
 	onsort={(key) => {
@@ -328,7 +326,7 @@
 		selectionStore.clear();
 	}}
 	onclosedetails={() => {
-		detailsClosed = true;
+		desktopDetailsOpen = false;
 		detailsSheetOpen = false;
 	}}
 	onpreviewfile={(file) => {

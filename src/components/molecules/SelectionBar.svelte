@@ -2,6 +2,7 @@
 	import IconButton from '$components/atoms/IconButton.svelte';
 	import IconDownload from '@tabler/icons-svelte/icons/download';
 	import IconFolderSymlink from '@tabler/icons-svelte/icons/folder-symlink';
+	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
 	import IconTrash from '@tabler/icons-svelte/icons/trash';
 	import IconX from '@tabler/icons-svelte/icons/x';
 
@@ -18,9 +19,22 @@
 		onmove?: () => void;
 		/** 解除ボタンの説明(タブレットの選択モードでは選択の終了にする) */
 		clearLabel?: string;
+		/** 詳細パネルを開いているか(デスクトップのトグルボタンの状態表示用) */
+		detailsOpen?: boolean;
+		/** 詳細パネルの開閉(指定した場合だけボタンを表示。デスクトップでのみ表示する) */
+		ontoggledetails?: () => void;
 	};
 
-	let { count, ondownload, ondelete, onclear, onmove, clearLabel = '選択を解除' }: Props = $props();
+	let {
+		count,
+		ondownload,
+		ondelete,
+		onclear,
+		onmove,
+		clearLabel = '選択を解除',
+		detailsOpen = false,
+		ontoggledetails,
+	}: Props = $props();
 </script>
 
 <p role="status">
@@ -37,6 +51,17 @@
 		<IconButton label="選択した項目を削除" onclick={ondelete}>
 			<IconTrash size={16} />
 		</IconButton>
+		{#if ontoggledetails !== undefined}
+			<span data-details-toggle>
+				<IconButton
+					label={detailsOpen ? '詳細パネルを閉じる' : '詳細パネルを開く'}
+					active={detailsOpen}
+					onclick={ontoggledetails}
+				>
+					<IconInfoCircle size={16} />
+				</IconButton>
+			</span>
+		{/if}
 		<IconButton label={clearLabel} onclick={onclear}>
 			<IconX size={16} />
 		</IconButton>
@@ -64,6 +89,17 @@
 		display: flex;
 		align-items: center;
 		gap: 5px;
+	}
+
+	span[data-details-toggle] {
+		display: inline-flex;
+	}
+
+	/* 詳細パネルのトグルはデスクトップ(マウス操作の広い画面)でのみ表示する */
+	@media (pointer: coarse), (max-width: 640px) {
+		span[data-details-toggle] {
+			display: none;
+		}
 	}
 
 	/* タッチ操作の端末: 指で押しやすいように少し大きくする(スマートフォンでは選択バー自体を出さない) */

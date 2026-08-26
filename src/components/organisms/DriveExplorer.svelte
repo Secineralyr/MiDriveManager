@@ -52,6 +52,8 @@
 		onclearselection: () => void;
 		/** 詳細パネルを閉じる操作 */
 		onclosedetails: () => void;
+		/** デスクトップの詳細パネルの開閉トグル(ボタンはデスクトップでのみ表示) */
+		ontoggledetails?: () => void;
 		/** ファイルのプレビューを開く操作 */
 		onpreviewfile: (file: FileRecord) => void;
 		/** フォルダ作成開始時の処理 */
@@ -118,6 +120,7 @@
 		onselectitem,
 		onclearselection,
 		onclosedetails,
+		ontoggledetails,
 		onpreviewfile,
 		oncreatefolder,
 		onrename,
@@ -270,6 +273,8 @@
 					onclear={tablet ? () => ontoggleselectmode?.() : onclearselection}
 					onmove={onmoveselection}
 					clearLabel={tablet ? '選択を終了' : '選択を解除'}
+					{detailsOpen}
+					{ontoggledetails}
 				/>
 			{:else}
 				<DriveToolbar
@@ -293,6 +298,8 @@
 						sortOpen = true;
 					}}
 					{phone}
+					{detailsOpen}
+					{ontoggledetails}
 				/>
 			{/if}
 		</div>

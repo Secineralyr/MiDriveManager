@@ -64,3 +64,17 @@
 		onclearsearch: () => {},
 	}}
 />
+
+<Story
+	name="詳細パネル表示中(デスクトップ)"
+	args={{
+		breadcrumb,
+		viewMode: 'list',
+		onnavigate: () => {},
+		onviewmode: () => {},
+		oncreatefolder: () => {},
+		onuploadfiles: () => {},
+		detailsOpen: true,
+		ontoggledetails: () => {},
+	}}
+/>
