@@ -26,7 +26,6 @@ const failingClient: ActionsClient = {
 	driveFilesUpdate: () => Promise.reject(new Error('未使用')),
 	driveFilesDelete: () => Promise.reject(new Error('未使用')),
 	driveFilesMoveBulk: () => Promise.reject(new Error('未使用')),
-	driveFilesUploadFromUrl: () => Promise.reject(new Error('未使用')),
 };
 
 /** テストごとに表示中のトーストと操作エラーを消す */

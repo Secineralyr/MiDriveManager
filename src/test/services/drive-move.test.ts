@@ -56,7 +56,6 @@ const makeMoveClient = () => {
 		.mockImplementation((params) =>
 			Promise.resolve(makeFolder(params.folderId, params.parentId ?? null)),
 		);
-	const uploadFromUrl = vi.fn<ActionsClient['driveFilesUploadFromUrl']>().mockResolvedValue({});
 	const fileUpdate = vi
 		.fn<ActionsClient['driveFilesUpdate']>()
 		.mockImplementation((params) =>
@@ -69,9 +68,8 @@ const makeMoveClient = () => {
 		driveFilesUpdate: fileUpdate,
 		driveFilesDelete: () => Promise.resolve({}),
 		driveFilesMoveBulk: moveBulk,
-		driveFilesUploadFromUrl: uploadFromUrl,
 	};
-	return { client, moveBulk, folderUpdate, uploadFromUrl, fileUpdate };
+	return { client, moveBulk, folderUpdate, fileUpdate };
 };
 
 /** テストごとにIndexedDBを初期化してサンプルデータを投入する */

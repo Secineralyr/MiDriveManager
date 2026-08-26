@@ -17,7 +17,6 @@ type ActionsClientShape = Pick<
 	| 'driveFilesUpdate'
 	| 'driveFilesDelete'
 	| 'driveFilesMoveBulk'
-	| 'driveFilesUploadFromUrl'
 >;
 
 /** 削除対象の項目 */

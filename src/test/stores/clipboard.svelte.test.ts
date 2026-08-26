@@ -48,7 +48,6 @@ const makeFile = (id: string): FileRecord => ({
  */
 const makeClient = () => {
 	const moveBulk = vi.fn<ActionsClient['driveFilesMoveBulk']>().mockResolvedValue({});
-	const uploadFromUrl = vi.fn<ActionsClient['driveFilesUploadFromUrl']>().mockResolvedValue({});
 	const client: ActionsClient = {
 		driveFoldersCreate: () => Promise.reject(new Error('未使用')),
 		driveFoldersUpdate: () => Promise.reject(new Error('未使用')),
@@ -56,9 +55,8 @@ const makeClient = () => {
 		driveFilesUpdate: () => Promise.reject(new Error('未使用')),
 		driveFilesDelete: () => Promise.resolve({}),
 		driveFilesMoveBulk: moveBulk,
-		driveFilesUploadFromUrl: uploadFromUrl,
 	};
-	return { client, moveBulk, uploadFromUrl };
+	return { client, moveBulk };
 };
 
 /** テストごとにIndexedDBとクリップボードを初期化する */

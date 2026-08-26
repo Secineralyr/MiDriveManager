@@ -51,7 +51,6 @@ const makeFile = (id: string): FileRecord => ({
 const makeClient = () => {
 	const fileDelete = vi.fn<ActionsClient['driveFilesDelete']>().mockResolvedValue({});
 	const moveBulk = vi.fn<ActionsClient['driveFilesMoveBulk']>().mockResolvedValue({});
-	const uploadFromUrl = vi.fn<ActionsClient['driveFilesUploadFromUrl']>().mockResolvedValue({});
 	const folderCreate = vi.fn<ActionsClient['driveFoldersCreate']>().mockImplementation((params) =>
 		Promise.resolve({
 			id: 'new1',
@@ -67,9 +66,8 @@ const makeClient = () => {
 		driveFilesUpdate: () => Promise.reject(new Error('未使用')),
 		driveFilesDelete: fileDelete,
 		driveFilesMoveBulk: moveBulk,
-		driveFilesUploadFromUrl: uploadFromUrl,
 	};
-	return { client, fileDelete, moveBulk, uploadFromUrl, folderCreate };
+	return { client, fileDelete, moveBulk, folderCreate };
 };
 
 /**

@@ -84,7 +84,6 @@ const makeClient = (overrides: Partial<ActionsClient> = {}): ActionsClient => ({
 		),
 	driveFilesDelete: () => Promise.resolve({}),
 	driveFilesMoveBulk: () => Promise.resolve({}),
-	driveFilesUploadFromUrl: () => Promise.resolve({}),
 	...overrides,
 });
 
