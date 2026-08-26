@@ -58,6 +58,8 @@
 		onpreviewfile: (file: FileRecord) => void;
 		/** フォルダ作成開始時の処理 */
 		oncreatefolder: () => void;
+		/** ツリーのフォルダメニューからの新規フォルダ作成(対象の親フォルダIDを渡す) */
+		oncreatefolderat?: (parentId: string | null) => void;
 		/** 名前の変更を開始する操作 */
 		onrename: () => void;
 		/** メタデータ保存時の処理 */
@@ -123,6 +125,7 @@
 		ontoggledetails,
 		onpreviewfile,
 		oncreatefolder,
+		oncreatefolderat,
 		onrename,
 		onsavemetadata,
 		ondeleteselection,
@@ -248,6 +251,8 @@
 		onnavigate={handleTreeNavigate}
 		{ondropitems}
 		{ondropfiles}
+		{oncreatefolderat}
+		{phone}
 		onclose={() => {
 			treeOpen = false;
 		}}

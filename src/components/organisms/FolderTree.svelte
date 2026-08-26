@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
 	import { tick, untrack } from 'svelte';
+	import ActionSheet from '$components/molecules/ActionSheet.svelte';
+	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 	import type { FolderRecord } from '../../lib/db/schema';
 	import FolderTreeItem from '$components/molecules/FolderTreeItem.svelte';
 	import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
+	import IconFolderPlus from '@tabler/icons-svelte/icons/folder-plus';
 	import { ancestorIds } from '../../lib/services/folder-tree';
+	import { longPress } from '../../lib/utils/long-press';
 
 	type Props = {
 		/** 親キーごとの子フォルダ一覧 */
@@ -21,6 +25,10 @@
 		expandOnSelect?: boolean;
 		/** これより深い階層はインデントを増やさない(タブレット・スマートフォンでの見切れ対策。既定は6) */
 		maxIndentDepth?: number;
+		/** フォルダの右クリック(長押し)メニューからの新規フォルダ作成(指定した場合だけメニューを出す) */
+		oncreatefolderat?: (parentId: string | null) => void;
+		/** スマートフォン表示かどうか(メニューを下から出るシートにする) */
+		phone?: boolean;
 	};
 
 	let {
@@ -31,7 +39,60 @@
 		ondropfiles,
 		expandOnSelect = false,
 		maxIndentDepth = 6,
+		oncreatefolderat,
+		phone = false,
 	}: Props = $props();
+
+	let menuTarget = $state<{
+		/** 対象のフォルダID(ルートはnull) */
+		folderId: string | null;
+		/** ビューポート基準のx座標 */
+		x: number;
+		/** ビューポート基準のy座標 */
+		y: number;
+	} | null>(null);
+
+	/**
+	 * フォルダのメニューを開く
+	 * @param folderId - 対象のフォルダID(ルートはnull)
+	 * @param position - 表示位置
+	 */
+	const handleOpenMenu = (
+		folderId: string | null,
+		position: {
+			/** ビューポート基準のx座標 */
+			x: number;
+			/** ビューポート基準のy座標 */
+			y: number;
+		},
+	) => {
+		menuTarget = { folderId, ...position };
+	};
+
+	const menuTitle = $derived.by(() => {
+		if (menuTarget === null || menuTarget.folderId === null) {
+			return 'ルート';
+		}
+
+		const targetId = menuTarget.folderId;
+		for (const bucket of Object.values(childrenMap)) {
+			const hit = bucket.find((folder) => folder.id === targetId);
+			if (hit !== undefined) {
+				return hit.name;
+			}
+		}
+
+		return 'フォルダ';
+	});
+
+	const MENU_ITEMS = [{ id: 'create', label: '新しいフォルダ', icon: IconFolderPlus }];
+
+	/** メニューで選ばれた操作を実行する(現状は新規フォルダ作成のみ) */
+	const handleMenuSelect = () => {
+		if (menuTarget !== null) {
+			oncreatefolderat?.(menuTarget.folderId);
+		}
+	};
 
 	let expanded = $state<Record<string, boolean>>({});
 	let rootDropover = $state(false);
@@ -148,6 +209,17 @@
 				ondragover={handleRootDragOver}
 				ondragleave={handleRootDragLeave}
 				ondrop={handleRootDrop}
+				oncontextmenu={(event) => {
+					if (oncreatefolderat !== undefined) {
+						event.preventDefault();
+						handleOpenMenu(null, { x: event.clientX, y: event.clientY });
+					}
+				}}
+				use:longPress={oncreatefolderat === undefined
+					? undefined
+					: (position) => {
+							handleOpenMenu(null, position);
+						}}
 			>
 				<span aria-hidden="true">
 					<IconChevronDown size={16} />
@@ -174,6 +246,7 @@
 							{ondropitems}
 							{ondropfiles}
 							{maxIndentDepth}
+							onopenmenu={oncreatefolderat === undefined ? undefined : handleOpenMenu}
 						/>
 					{/each}
 				</ul>
@@ -181,6 +254,31 @@
 		</li>
 	</ul>
 </nav>
+
+{#if oncreatefolderat !== undefined}
+	{#if phone}
+		<ActionSheet
+			open={menuTarget !== null}
+			title={menuTitle}
+			items={MENU_ITEMS}
+			onselect={handleMenuSelect}
+			onclose={() => {
+				menuTarget = null;
+			}}
+		/>
+	{:else}
+		<ContextMenu
+			open={menuTarget !== null}
+			x={menuTarget?.x ?? 0}
+			y={menuTarget?.y ?? 0}
+			items={MENU_ITEMS}
+			onselect={handleMenuSelect}
+			onclose={() => {
+				menuTarget = null;
+			}}
+		/>
+	{/if}
+{/if}
 
 <style>
 	nav {

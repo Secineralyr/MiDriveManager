@@ -33,6 +33,8 @@
 	let previewFile = $state<FileRecord | null>(null);
 	let desktopDetailsOpen = $state(true);
 	let createOpen = $state(false);
+
+	let createParentId = $state<string | null>(null);
 	let renameOpen = $state(false);
 	let deleteOpen = $state(false);
 	let menuPosition = $state<{ x: number; y: number } | null>(null);
@@ -333,6 +335,11 @@
 		previewFile = file;
 	}}
 	oncreatefolder={() => {
+		createParentId = driveStore.currentFolderId;
+		createOpen = true;
+	}}
+	oncreatefolderat={(parentId) => {
+		createParentId = parentId;
 		createOpen = true;
 	}}
 	onrename={() => {
@@ -412,6 +419,7 @@
 <DriveActionDialogs
 	{account}
 	bind:createOpen
+	{createParentId}
 	bind:renameOpen
 	bind:deleteOpen
 	{renameItem}

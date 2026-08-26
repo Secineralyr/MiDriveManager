@@ -65,3 +65,13 @@
 		</div>
 	{/snippet}
 </Story>
+
+<Story
+	name="フォルダメニュー付き(右クリックで新しいフォルダ)"
+	args={{
+		childrenMap,
+		currentFolderId: null,
+		onnavigate: () => {},
+		oncreatefolderat: () => {},
+	}}
+/>

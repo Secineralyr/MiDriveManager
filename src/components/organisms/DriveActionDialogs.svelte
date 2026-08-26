@@ -4,7 +4,7 @@
 	import type { DriveItem } from '../../lib/services/drive-actions';
 	import PromptDialog from '$components/molecules/PromptDialog.svelte';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
-	import { driveStore } from '../../lib/stores/drive.svelte';
+	
 	import { driveTasks } from '../../lib/stores/drive-tasks';
 	import { selectionStore } from '../../lib/stores/selection.svelte';
 
@@ -13,6 +13,8 @@
 		account: AccountRecord;
 		/** フォルダ作成ダイアログの表示状態(バインド可能) */
 		createOpen: boolean;
+		/** フォルダの作成先(ルート直下はnull) */
+		createParentId: string | null;
 		/** リネームダイアログの表示状態(バインド可能) */
 		renameOpen: boolean;
 		/** 削除確認ダイアログの表示状態(バインド可能) */
@@ -28,6 +30,7 @@
 	let {
 		account,
 		createOpen = $bindable(),
+		createParentId,
 		renameOpen = $bindable(),
 		deleteOpen = $bindable(),
 		renameItem,
@@ -49,7 +52,7 @@
 	const handleCreate = (name: string) => {
 		driveTasks.createFolder(account, {
 			name,
-			parentId: driveStore.currentFolderId,
+			parentId: createParentId,
 		});
 		createOpen = false;
 	};

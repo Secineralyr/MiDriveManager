@@ -19,6 +19,10 @@
 		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
 		/** ドロワーの暗幕タップで閉じる操作(狭い画面用) */
 		onclose?: () => void;
+		/** フォルダの右クリック(長押し)メニューからの新規フォルダ作成(FolderTreeへ中継) */
+		oncreatefolderat?: (parentId: string | null) => void;
+		/** スマートフォン表示かどうか(メニューをシートにする) */
+		phone?: boolean;
 	};
 
 	let {
@@ -29,6 +33,8 @@
 		ondropitems,
 		ondropfiles,
 		onclose,
+		oncreatefolderat,
+		phone = false,
 	}: Props = $props();
 
 	const resizer = createPanelResizer({
@@ -67,7 +73,15 @@
 	style:min-width="{resizer.width}px"
 	style:max-width="{resizer.width}px"
 >
-	<FolderTree {childrenMap} {currentFolderId} {onnavigate} {ondropitems} {ondropfiles} />
+	<FolderTree
+		{childrenMap}
+		{currentFolderId}
+		{onnavigate}
+		{ondropitems}
+		{ondropfiles}
+		{oncreatefolderat}
+		{phone}
+	/>
 </aside>
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_no_noninteractive_tabindex -- separatorロールの境界線をポインタと矢印キーで操作するため -->
 <div
@@ -148,8 +162,11 @@
 			transition: transform 250ms ease;
 		}
 
+		/* transformが掛かったままだとfixed基準になり、
+		   中のメニューがドロワー内に閉じ込められる。
+		   ただし滑らかさを出すためスライド自体はコンポジター処理のtransformで行う */
 		aside[data-open='true'] {
-			transform: translateX(0);
+			transform: none;
 		}
 	}
 </style>

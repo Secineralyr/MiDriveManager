@@ -27,6 +27,7 @@
 	args={{
 		account,
 		createOpen: true,
+		createParentId: null,
 		renameOpen: false,
 		deleteOpen: false,
 		renameItem: null,
@@ -40,6 +41,7 @@
 	args={{
 		account,
 		createOpen: false,
+		createParentId: null,
 		renameOpen: true,
 		deleteOpen: false,
 		renameItem: { kind: 'file', id: 'f1' },
@@ -53,6 +55,7 @@
 	args={{
 		account,
 		createOpen: false,
+		createParentId: null,
 		renameOpen: false,
 		deleteOpen: true,
 		renameItem: null,

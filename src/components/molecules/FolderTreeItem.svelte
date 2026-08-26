@@ -4,6 +4,7 @@
 	// oxlint-disable-next-line import/no-self-import -- 再帰コンポーネントの表現には自己importが必要(svelte:selfは非推奨)
 	import FolderTreeItem from '$components/molecules/FolderTreeItem.svelte';
 	import IconChevronRight from '@tabler/icons-svelte/icons/chevron-right';
+	import { longPress } from '../../lib/utils/long-press';
 	import { slide } from 'svelte/transition';
 
 	type Props = {
@@ -27,6 +28,13 @@
 		depth?: number;
 		/** これより深い階層はインデントを増やさない(タブレット・スマートフォンで幅が尽きないように) */
 		maxIndentDepth?: number;
+		/** 右クリック(長押し)でフォルダのメニューを開く操作(指定した場合だけ受け付ける) */
+		onopenmenu?: (folderId: string, position: {
+			/** ビューポート基準のx座標 */
+			x: number;
+			/** ビューポート基準のy座標 */
+			y: number;
+		}) => void;
 	};
 
 	let {
@@ -40,7 +48,23 @@
 		ondropfiles,
 		depth = 1,
 		maxIndentDepth = 6,
+		onopenmenu,
 	}: Props = $props();
+
+	/**
+	 * 右クリックでブラウザのメニューの代わりにフォルダのメニューを開く
+	 * @param event - マウスイベント
+	 */
+	const handleContextMenu = (event: MouseEvent) => {
+		if (onopenmenu === undefined) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		
+		onopenmenu(folder.id, { x: event.clientX, y: event.clientY });
+	};
 
 	let dropover = $state(false);
 
@@ -85,6 +109,12 @@
 		ondragover={handleDragOver}
 		ondragleave={handleDragLeave}
 		ondrop={handleDrop}
+		oncontextmenu={handleContextMenu}
+		use:longPress={onopenmenu === undefined
+			? undefined
+			: (position) => {
+					onopenmenu(folder.id, position);
+				}}
 	>
 		{#if children.length > 0}
 			<button
@@ -124,6 +154,7 @@
 					{ondropfiles}
 					depth={depth + 1}
 					{maxIndentDepth}
+					{onopenmenu}
 				/>
 			{/each}
 		</ul>
