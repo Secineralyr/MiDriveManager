@@ -166,6 +166,14 @@ export const createDriveShortcuts = (context: ShortcutContext) => ({
 	},
 
 	/**
+	 * アプリ内クリップボードの貼り付けを直接実行する(背景メニューなどキー入力以外の入口用)
+	 * @returns 貼り付け処理の完了を待つPromise
+	 */
+	pasteAppClipboard() {
+		return pasteClipboard(context);
+	},
+
+	/**
 	 * キー入力からショートカットを実行する
 	 * @param event - キーボードイベント
 	 */

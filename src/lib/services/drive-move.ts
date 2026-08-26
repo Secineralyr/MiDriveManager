@@ -180,6 +180,61 @@ export const moveItems = async (
 };
 
 /**
+ * 複製対象の項目からファイルのキャッシュレコードを集める(フォルダは対象外)
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param items - 複製する項目の一覧
+ * @returns ファイルキャッシュの配列
+ * @throws {Error} 複製できるファイルがキャッシュに1件もない場合
+ */
+export const collectDuplicateSources = async (accountId: string, items: DriveItem[]) => {
+	const records = await Promise.all(
+		items
+			.filter((item) => item.kind === 'file')
+			.map((item) => getCachedFile(accountId, item.id)),
+	);
+	const files = records.filter((record): record is FileRecord => record !== undefined);
+	if (files.length === 0) {
+		throw new Error('複製できるファイルが見つかりません。同期し直してください');
+	}
+
+	return files;
+};
+
+/**
+ * ファイルをそれぞれ元のフォルダへ複製する(URL取り込み。サブメニューの「複製」用)
+ * サーバー側で非同期に処理されるため、結果は次回の同期で反映される
+ * @param client - APIクライアント
+ * @param input - 複製するファイルと進捗通知
+ */
+export const duplicateFiles = async (
+	client: ActionsClient,
+	input: {
+		/** 複製するファイルの一覧 */
+		files: FileRecord[];
+		/** 1件取り込むごとに呼ぶ進捗通知(完了件数, 全件数) */
+		onProgress?: ProgressCallback;
+	},
+) => {
+	const total = input.files.length;
+	input.onProgress?.(0, total);
+
+	try {
+		for (const [index, file] of input.files.entries()) {
+			// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
+			await client.driveFilesUploadFromUrl({
+				url: file.url,
+				folderId: file.folderId,
+				isSensitive: file.isSensitive,
+				comment: file.comment,
+			});
+			input.onProgress?.(index + 1, total);
+		}
+	} catch (error) {
+		throw translateDriveError(error);
+	}
+};
+
+/**
  * ファイルのURL取り込みで複製を作る(コピー&ペースト用)
  * サーバー側で非同期に処理されるため、結果は次回の同期で反映される
  * @param client - APIクライアント

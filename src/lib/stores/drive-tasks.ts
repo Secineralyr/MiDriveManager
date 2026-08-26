@@ -1,51 +1,25 @@
 import type { AccountRecord, FileRecord } from '../db/schema';
-import type { ActionsClient, DriveItem } from '../services/drive-actions';
-import type { UploadClient, UploadEntry } from '../services/upload';
+import type { ActionsClientFactory, UploadClientFactory } from './drive-task-helpers';
 import { collectDownloadEntries, downloadEntries } from '../services/download';
-import { copyFilesToFolder, moveItems, selectItemsToMove } from '../services/drive-move';
+import {
+	collectDuplicateSources,
+	copyFilesToFolder,
+	duplicateFiles,
+	moveItems,
+	selectItemsToMove,
+} from '../services/drive-move';
 import { createFolder, deleteItems } from '../services/drive-actions';
 import { downloadLabel, notifyExisting, uploadLabel, zipNameFor } from './drive-task-labels';
 import { filesToUploadEntries, readDroppedEntries, uploadEntries } from '../services/upload';
-import type { ProgressReporter } from './queue.svelte';
+import type { DriveItem } from '../services/drive-actions';
+import type { UploadEntry } from '../services/upload';
 import { createDriveClient } from '../api/client';
-import { driveStore } from './drive.svelte';
 import { queueStore } from './queue.svelte';
 import { syncStore } from './sync.svelte';
-
-/** 一括操作用APIクライアントの生成関数 */
-type ActionsClientFactory = (host: string, token: string) => ActionsClient;
-
-/** アップロード用APIクライアントの生成関数 */
-type UploadClientFactory = (host: string, token: string) => UploadClient;
+import { withRefresh } from './drive-task-helpers';
 
 /** ダウンロードの取得・保存の差し替え(テスト用) */
 type DownloadOverrides = Pick<Parameters<typeof downloadEntries>[0], 'fetchImpl' | 'save'>;
-
-/**
- * 対象アカウントのドライブを表示中なら、キャッシュから再読み込みする
- * @param accountId - タスクの対象アカウントID
- */
-const refreshIfShowing = async (accountId: string) => {
-	if (driveStore.accountId === accountId) {
-		await driveStore.refresh();
-	}
-};
-
-/**
- * タスクの実行処理を、終了後(成功・失敗を問わず)の再読み込み付きで包む
- * @param accountId - タスクの対象アカウントID
- * @param task - 実行処理
- * @returns 再読み込み付きの実行処理
- */
-const withRefresh =
-	(accountId: string, task: (report: ProgressReporter) => Promise<void>) =>
-	async (report: ProgressReporter) => {
-		try {
-			await task(report);
-		} finally {
-			await refreshIfShowing(accountId);
-		}
-	};
 
 /** ドライブの一括操作(アップロード・削除・移動・複製)を操作キューへ積む窓口 */
 export const driveTasks = {
@@ -280,6 +254,39 @@ export const driveTasks = {
 			run: async (report) => {
 				await copyFilesToFolder(clientFactory(account.host, account.token), {
 					...input,
+					onProgress: report,
+				});
+				syncStore.run(account);
+			},
+		});
+	},
+
+	/**
+	 * 選択したファイルをそれぞれ元のフォルダへ複製するタスクをキューへ積む(フォルダは対象外)
+	 * 複製はサーバー側で非同期に処理されるため、タスク完了後に全量同期を開始して反映する
+	 * @param account - 対象アカウント
+	 * @param items - 複製する項目の一覧(ファイル以外は無視する)
+	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
+	 * @returns 積んだタスクの識別子。ファイルが含まれない場合はnull
+	 */
+	duplicateItems(
+		account: AccountRecord,
+		items: DriveItem[],
+		clientFactory: ActionsClientFactory = createDriveClient,
+	) {
+		const fileItems = items.filter((item) => item.kind === 'file');
+		if (fileItems.length === 0) {
+			return null;
+		}
+
+		return queueStore.enqueue({
+			account,
+			kind: 'copy',
+			label: `${fileItems.length}件の複製`,
+			run: async (report) => {
+				const files = await collectDuplicateSources(account.id, fileItems);
+				await duplicateFiles(clientFactory(account.host, account.token), {
+					files,
 					onProgress: report,
 				});
 				syncStore.run(account);

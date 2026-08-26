@@ -1,7 +1,7 @@
 import type { DriveItem } from './drive-actions';
 
 /** コンテキストメニューの操作 */
-type MenuActionShape = 'details' | 'download' | 'copy' | 'cut' | 'rename' | 'delete';
+type MenuActionShape = 'details' | 'download' | 'duplicate' | 'move' | 'rename' | 'delete';
 
 /** コンテキストメニューの項目 */
 type MenuItemShape = {
@@ -23,7 +23,8 @@ export type MenuItem = MenuItemShape;
 
 /**
  * 選択中の項目に応じたコンテキストメニューの項目を組み立てる
- * フォルダを含む場合はコピー(複製)を出さず、名前の変更は1件選択の時だけ選べる
+ * フォルダを含む場合は複製を出さず、名前の変更は1件選択の時だけ選べる
+ * (コピー・切り取り・貼り付けはメニューから廃止。ショートカット(Ctrl+C/X/V)では引き続き使える)
  * @param items - 選択中の項目
  * @param options - 追加項目の指定
  * @returns メニューの項目
@@ -40,12 +41,12 @@ export const buildSelectionMenu = (
 		options.details === true
 			? [{ id: 'details', label: '詳細', disabled: items.length !== 1 }]
 			: [];
-	const copy: MenuItem[] = hasFolder ? [] : [{ id: 'copy', label: 'コピー' }];
+	const duplicate: MenuItem[] = hasFolder ? [] : [{ id: 'duplicate', label: '複製' }];
 	return [
 		...details,
 		{ id: 'download', label: 'ダウンロード' },
-		...copy,
-		{ id: 'cut', label: '切り取り' },
+		...duplicate,
+		{ id: 'move', label: '移動' },
 		{ id: 'rename', label: '名前の変更', disabled: items.length !== 1 },
 		{ id: 'delete', label: '削除', danger: true },
 	];

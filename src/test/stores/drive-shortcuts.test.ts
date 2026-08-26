@@ -182,4 +182,16 @@ describe('貼り付けのショートカット', () => {
 			expect(selectionStore.keys).toStrictEqual([]);
 		});
 	});
+
+	it('pasteAppClipboard(背景メニューの入口)でもアプリ内クリップボードが貼り付けられる', async () => {
+		const { shortcuts } = makeShortcuts();
+		const db = await openDatabase();
+		await db.put('files', { ...makeFile('f1'), folderId: 'd1', folderKey: 'd1' });
+		clipboardStore.setCut('a1', [{ kind: 'file', id: 'f1' }]);
+		await shortcuts.pasteAppClipboard();
+		// 移動要否の判定が非同期になったため、キューへの投入を待って確認する
+		await vi.waitFor(() => {
+			expect(queueStore.tasks.at(-1)?.kind).toBe('move');
+		});
+	});
 });

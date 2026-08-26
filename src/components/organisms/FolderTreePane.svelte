@@ -2,6 +2,7 @@
 	import type { FolderRecord } from '../../lib/db/schema';
 	import FolderTree from '$components/organisms/FolderTree.svelte';
 	import { createPanelResizer } from '../../lib/utils/panel-resize.svelte';
+	import { fade } from 'svelte/transition';
 
 	type Props = {
 		/** 親キーごとの子フォルダ一覧 */
@@ -16,6 +17,8 @@
 		ondropitems?: (folderId: string | null) => void;
 		/** フォルダへのOSファイルドロップ時の処理 */
 		ondropfiles?: (folderId: string | null, transfer: DataTransfer) => void;
+		/** ドロワーの暗幕タップで閉じる操作(狭い画面用) */
+		onclose?: () => void;
 	};
 
 	let {
@@ -25,6 +28,7 @@
 		onnavigate,
 		ondropitems,
 		ondropfiles,
+		onclose,
 	}: Props = $props();
 
 	const resizer = createPanelResizer({
@@ -46,6 +50,16 @@
 	};
 </script>
 
+{#if open}
+	<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -- ドロワーの背景。閉じる操作はツールバーのボタンでも行える -->
+	<div
+		class="drawer-scrim"
+		transition:fade={{ duration: 250 }}
+		onclick={() => {
+			onclose?.();
+		}}
+	></div>
+{/if}
 <aside
 	bind:this={aside}
 	data-tour="tree"
@@ -71,6 +85,24 @@
 ></div>
 
 <style>
+	.drawer-scrim {
+		display: none;
+	}
+
+	/* 狭い画面: ツリーはドロワーになり、背後に暗幕を出す */
+	@media (max-width: 640px) {
+		.drawer-scrim {
+			display: block;
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+			z-index: 15;
+			background-color: var(--color-scrim);
+		}
+	}
+
 	aside {
 		display: flex;
 		flex-direction: column;

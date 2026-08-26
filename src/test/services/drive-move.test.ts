@@ -1,7 +1,12 @@
 import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDatabase, openDatabase } from '../../lib/db/database';
-import { copyFilesToFolder, moveItems, selectItemsToMove } from '../../lib/services/drive-move';
+import {
+	collectDuplicateSources,
+	copyFilesToFolder,
+	moveItems,
+	selectItemsToMove,
+} from '../../lib/services/drive-move';
 import type { ActionsClient } from '../../lib/services/drive-actions';
 import { stubIndexedDb } from '../indexeddb-test-util';
 
@@ -174,6 +179,22 @@ describe('移動の事前選別', () => {
 	it('キャッシュに無い項目は判定できないため移動対象として残る', async () => {
 		const kept = await selectItemsToMove('a1', [{ kind: 'file', id: 'nope' }], null);
 		expect(kept).toStrictEqual([{ kind: 'file', id: 'nope' }]);
+	});
+});
+
+describe('複製の対象収集', () => {
+	beforeEach(seed);
+
+	it('ファイルのキャッシュだけが集まり、1件も見つからない場合はエラーになる', async () => {
+		const files = await collectDuplicateSources('a1', [
+			{ kind: 'file', id: 'f1' },
+			{ kind: 'folder', id: 'd1' },
+		]);
+		expect(files.map((file) => file.id)).toStrictEqual(['f1']);
+
+		await expect(collectDuplicateSources('a1', [{ kind: 'file', id: 'nope' }])).rejects.toThrow(
+			'複製できるファイルが見つかりません',
+		);
 	});
 });
 
