@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 storybook-static/
+
+.wrangler
+.dev.vars*
+wrangler.jsonc

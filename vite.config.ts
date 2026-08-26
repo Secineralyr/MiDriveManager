@@ -1,5 +1,6 @@
 import { VitePWA } from 'vite-plugin-pwa';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import { cloudflare } from '@cloudflare/vite-plugin';
 import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { svelteTesting } from '@testing-library/svelte/vite';
@@ -17,6 +18,7 @@ export default defineConfig({
 	},
 	plugins: [
 		svelte(),
+		cloudflare(),
 		svelteTesting(),
 		basicSsl(),
 		// oxlint-disable-next-line new-cap - VitePWAの関数名でエラーになるため
