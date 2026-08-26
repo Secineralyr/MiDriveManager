@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Button from '$components/atoms/Button.svelte';
 	import { createDialogCloser } from '../../lib/utils/dialog-close.svelte';
+	import { themeStore } from '../../lib/stores/theme.svelte';
 
 	type Props = {
 		/** 表示するかどうか */
@@ -11,14 +12,48 @@
 
 	let { open, onclose }: Props = $props();
 
-	const GITHUB_URL = 'https://github.com/slofp';
+	const GITHUB_URL = 'https://github.com/Secineralyr/MiDriveManager';
 
 	const DEVELOPER_URL = 'https://misskey.io/@secineralyr';
 
-	const ABOUT_IMAGE_URL = '/sl-logo.png';
+	const ABOUT_IMAGE_URLS: Record<'dark' | 'light', string> = {
+		dark: '/sl-logo-d.png',
+		light: '/sl-logo-l.png',
+	};
 	const ABOUT_URL = 'https://secinet.jp';
 
 	let dialog = $state<HTMLDialogElement | null>(null);
+	let systemDark = $state(true);
+
+	// systemスキームを監視
+	$effect(() => {
+		if (typeof globalThis.matchMedia !== 'function') {
+			return;
+		}
+
+		const media = matchMedia('(prefers-color-scheme: dark)');
+		systemDark = media.matches;
+		
+		const handleChange = (event: MediaQueryListEvent) => {
+			const { matches } = event;
+			systemDark = matches;
+		};
+		media.addEventListener('change', handleChange);
+		
+		return () => {
+			media.removeEventListener('change', handleChange);
+		};
+	});
+
+	const effectiveTheme = $derived.by(() => {
+		if (themeStore.mode !== 'system') {
+			return themeStore.mode;
+		}
+
+		return systemDark ? 'dark' : 'light';
+	});
+
+	const aboutImageUrl = $derived(ABOUT_IMAGE_URLS[effectiveTheme]);
 
 	const closer = createDialogCloser();
 
@@ -50,7 +85,8 @@
 	oncancel={handleCancelEvent}
 >
 	<img src="/favicon.svg" alt="App Icon" />
-	<h2>MiDriveManager</h2>
+	<!-- svelte-ignore a11y_autofocus, a11y_no_noninteractive_tabindex -- 開いた直後のフォーカスを見出しに置いてフォーカス枠が出ないようにする。Chromium系はdialogのautofocusを無視するので子孫に置く -->
+	<h2 tabindex="-1" autofocus>MiDriveManager</h2>
 	<p>バージョン {APP_VERSION}</p>
 	<nav>
 		<a
@@ -74,7 +110,7 @@
 			target="_blank"
 			rel="noopener noreferrer"
 		>
-			<img src={ABOUT_IMAGE_URL} alt="Secineralyr" />
+			<img src={aboutImageUrl} alt="Secineralyr" />
 		</a>
 	</figure>
 	<div>
@@ -121,6 +157,12 @@
 		opacity: 0;
 		transform: scale(0.9);
 		filter: blur(4px);
+	}
+
+	/* フォーカスの置き場として使うので見出しには枠を出さないようにする */
+	h2:focus,
+	h2:focus-visible {
+		outline: none;
 	}
 
 	dialog::backdrop {
