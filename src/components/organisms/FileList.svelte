@@ -200,13 +200,17 @@
 		text-align: left;
 	}
 
-	/* 1列目はチェックボックス、2列目(名前)が残り幅を使う */
+	/* table-layout: fixedでは列幅はthが決めるため、タッチ操作の通常時は幅0へ畳み、
+	   選択モードの切り替えではこの幅のトランジションで列ごと滑らかに開閉する */
 	th:first-child {
+		overflow: hidden;
+		padding: 0;
 		inline-size: 35px;
+		transition: inline-size 250ms ease;
 	}
 
 	th[data-hidden='true'] {
-		display: none;
+		inline-size: 0;
 	}
 
 	th:nth-child(3) {

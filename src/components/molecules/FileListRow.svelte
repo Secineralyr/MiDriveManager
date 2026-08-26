@@ -5,6 +5,7 @@
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
 	import { longPress } from '../../lib/utils/long-press';
+	import { revealInline } from '../../lib/utils/transitions';
 
 	type Props = {
 		/** フォルダ行かどうか */
@@ -59,10 +60,8 @@
 
 	let dropover = $state(false);
 
-	// 選択中の見た目を出すかどうか(タッチ操作の通常時は選択状態を見せない)
 	const showSelected = $derived(selected && (!touch || selectMode));
 
-	// チェックボックスの列を出すかどうか(タッチ操作では選択モード中だけ)
 	const showCheckbox = $derived(!touch || selectMode);
 
 	/**
@@ -177,8 +176,17 @@
 	data-dropover={dropover}
 	aria-selected={showSelected}
 >
-	<td data-hidden={!showCheckbox}>
-		<CheckboxControl checked={selected} label="{name}を選択" size={15} ontoggle={handleCheckbox} />
+	<td>
+		{#if showCheckbox}
+			<span transition:revealInline={{ gap: 10 }}>
+				<CheckboxControl
+					checked={selected}
+					label="{name}を選択"
+					size={15}
+					ontoggle={handleCheckbox}
+				/>
+			</span>
+		{/if}
 	</td>
 	<td>
 		<FileTypeIcon {folder} {mimeType} />
@@ -223,16 +231,17 @@
 		color: var(--color-text);
 	}
 
-	/* 1列目: チェックボックス(タッチ操作の通常時は列ごと隠す) */
 	td:first-child {
-		padding-right: 0;
+		padding: 10px 0;
+	}
+	
+	td:first-child > span {
+		display: inline-flex;
+		/* 左余白はspan側で持ち、トランジションのgapで打ち消す */
+		margin-left: 10px;
+		vertical-align: middle;
 	}
 
-	td[data-hidden='true'] {
-		display: none;
-	}
-
-	/* 2列目: アイコンと名前 */
 	td:nth-child(2) {
 		display: flex;
 		align-items: center;
