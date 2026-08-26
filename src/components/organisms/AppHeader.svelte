@@ -142,6 +142,16 @@
 		max-width: 480px;
 	}
 
+	/* 左右のグループを同じ比率で伸縮させ、同期表示の出入りで中央の検索ボックスがずれないようにする */
+	header > div > div:first-child {
+		flex: 1;
+	}
+
+	header > div > div:last-child {
+		flex: 1;
+		justify-content: flex-end;
+	}
+
 	button {
 		display: inline-flex;
 		align-items: center;
