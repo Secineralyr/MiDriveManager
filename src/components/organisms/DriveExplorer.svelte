@@ -14,7 +14,6 @@
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
 	import SelectionBar from '$components/molecules/SelectionBar.svelte';
 	import type { ViewMode } from '../../lib/db/settings';
-	import { fade } from 'svelte/transition';
 
 	type Props = {
 		/** 親キーごとの子フォルダ一覧(ツリー用) */
@@ -239,16 +238,6 @@
 </script>
 
 <div class="workspace">
-	{#if treeOpen}
-		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -- ドロワーの背景。閉じる操作はツールバーのボタンでも行える -->
-		<div
-			class="drawer-scrim"
-			transition:fade={{ duration: 250 }}
-			onclick={() => {
-				treeOpen = false;
-			}}
-		></div>
-	{/if}
 	<FolderTreePane
 		{childrenMap}
 		{currentFolderId}
@@ -256,6 +245,9 @@
 		onnavigate={handleTreeNavigate}
 		{ondropitems}
 		{ondropfiles}
+		onclose={() => {
+			treeOpen = false;
+		}}
 	/>
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -- OSファイルのドロップを一覧全体で受けるためのドラッグ操作 -->
 	<main
@@ -470,21 +462,4 @@
 		padding-bottom: calc(80px + env(safe-area-inset-bottom));
 	}
 
-	.drawer-scrim {
-		display: none;
-	}
-
-	/* 狭い画面: フォルダツリーはドロワー(FolderTreePane側でスライド)になり、ここではスクリムを出す */
-	@media (max-width: 640px) {
-		.drawer-scrim {
-			display: block;
-			position: absolute;
-			top: 0;
-			right: 0;
-			bottom: 0;
-			left: 0;
-			z-index: 15;
-			background-color: var(--color-scrim);
-		}
-	}
 </style>

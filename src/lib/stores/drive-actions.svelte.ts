@@ -97,9 +97,9 @@ const runCreateFolder = async (
 			clientFactory(account.host, account.token),
 			input,
 		);
-		
+
 		await refreshIfShowing(account.id);
-		
+
 		return record.id;
 	} catch (error) {
 		state.error = error instanceof Error ? error.message : '操作に失敗しました';
@@ -154,9 +154,9 @@ export const driveActionsStore = {
 
 		state.busy = true;
 		state.error = null;
-		
+
 		const createdId = await runCreateFolder(account, input, clientFactory);
-		
+
 		state.busy = false;
 		return createdId;
 	},
