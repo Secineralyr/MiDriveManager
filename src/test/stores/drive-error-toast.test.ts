@@ -20,8 +20,8 @@ const account: AccountRecord = {
 
 /** すべての操作が失敗するクライアント */
 const failingClient: ActionsClient = {
-	driveFoldersCreate: () => Promise.reject(new Error('フォルダを作成できませんでした')),
-	driveFoldersUpdate: () => Promise.reject(new Error('未使用')),
+	driveFoldersCreate: () => Promise.reject(new Error('未使用')),
+	driveFoldersUpdate: () => Promise.reject(new Error('名前を変更できませんでした')),
 	driveFoldersDelete: () => Promise.reject(new Error('未使用')),
 	driveFilesUpdate: () => Promise.reject(new Error('未使用')),
 	driveFilesDelete: () => Promise.reject(new Error('未使用')),
@@ -57,15 +57,15 @@ describe('エラーのトースト振り替え', () => {
 	});
 
 	it('ドライブ操作ストアのエラーがトーストへ移される', async () => {
-		const ok = await driveActionsStore.createFolder(
+		const ok = await driveActionsStore.rename(
 			account,
-			{ name: '新規', parentId: null },
+			{ item: { kind: 'folder', id: 'd1' }, name: '新規' },
 			() => failingClient,
 		);
 		expect(ok).toBe(false);
 		forwardDriveErrorsToToast();
 		expect(toastStore.toasts.map((toast) => toast.message)).toStrictEqual([
-			'フォルダを作成できませんでした',
+			'名前を変更できませんでした',
 		]);
 		expect(driveActionsStore.error).toBeNull();
 	});

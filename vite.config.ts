@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { svelteTesting } from '@testing-library/svelte/vite';
-import { version } from './package.json';
+import { version } from './package.json' with { type: 'json' };
 
 // https://vitejs.dev/config/
 export default defineConfig({

@@ -163,6 +163,9 @@ describe('貼り付けのショートカット', () => {
 
 	it('ファイルがなければアプリ内クリップボードを貼り付け、切り取りなら選択を解除する', async () => {
 		const { shortcuts } = makeShortcuts();
+		// 貼り付け先(表示中のルート)と異なるフォルダにf1を置き、移動が必要な状態にする
+		const db = await openDatabase();
+		await db.put('files', { ...makeFile('f1'), folderId: 'd1', folderKey: 'd1' });
 		selectionStore.selectAll(['file:f1']);
 		clipboardStore.setCut('a1', [{ kind: 'file', id: 'f1' }]);
 		shortcuts.handlePaste({
@@ -170,8 +173,13 @@ describe('貼り付けのショートカット', () => {
 			clipboardData: { files: [] },
 			preventDefault: () => {},
 		});
+		// 移動要否の判定が非同期になったため、キューへの投入と選択解除を待って確認する
+		await vi.waitFor(() => {
+			expect(queueStore.tasks.at(-1)?.kind).toBe('move');
+		});
 		await queueStore.whenIdle();
-		expect(queueStore.tasks.at(-1)?.kind).toBe('move');
-		expect(selectionStore.keys).toStrictEqual([]);
+		await vi.waitFor(() => {
+			expect(selectionStore.keys).toStrictEqual([]);
+		});
 	});
 });

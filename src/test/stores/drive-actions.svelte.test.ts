@@ -20,11 +20,11 @@ const account: AccountRecord = {
 	lastSyncedAt: null,
 };
 
-/** APIレスポンス用のフォルダエンティティ */
+/** APIレスポンス用のフォルダエンティティ(名前の変更後) */
 const apiFolder: entities.DriveFolder = {
-	id: 'new1',
+	id: 'd1',
 	createdAt: '2026-08-23T00:00:00.000Z',
-	name: '新規',
+	name: '変更後',
 	parentId: null,
 };
 
@@ -34,7 +34,7 @@ const apiFolder: entities.DriveFolder = {
  * @returns 基本操作用のAPIクライアント
  */
 const makeClient = (overrides: Partial<ActionsClient> = {}): ActionsClient => ({
-	driveFoldersCreate: () => Promise.resolve(apiFolder),
+	driveFoldersCreate: () => Promise.reject(new Error('未使用')),
 	driveFoldersUpdate: () => Promise.resolve(apiFolder),
 	driveFoldersDelete: () => Promise.resolve({}),
 	driveFilesUpdate: () => Promise.reject(new Error('未使用')),
@@ -52,28 +52,28 @@ describe('基本操作ストア', () => {
 
 	it('成功するとtrueを返しエラーは残らず、表示中のドライブが再読み込みされる', async () => {
 		await driveStore.openAccount('a1');
-		const ok = await driveActionsStore.createFolder(
+		const ok = await driveActionsStore.rename(
 			account,
-			{ name: '新規', parentId: null },
+			{ item: { kind: 'folder', id: 'd1' }, name: '変更後' },
 			() => makeClient(),
 		);
 		expect(ok).toBe(true);
 		expect(driveActionsStore.busy).toBe(false);
 		expect(driveActionsStore.error).toBeNull();
-		expect(driveStore.childFolders.map((folder) => folder.id)).toStrictEqual(['new1']);
+		expect(driveStore.childFolders.map((folder) => folder.name)).toStrictEqual(['変更後']);
 	});
 
 	it('失敗するとfalseを返しエラーメッセージが保持される', async () => {
 		const failing = makeClient({
-			driveFoldersCreate: () => Promise.reject(new Error('作成に失敗しました')),
+			driveFoldersUpdate: () => Promise.reject(new Error('変更に失敗しました')),
 		});
-		const ok = await driveActionsStore.createFolder(
+		const ok = await driveActionsStore.rename(
 			account,
-			{ name: '新規', parentId: null },
+			{ item: { kind: 'folder', id: 'd1' }, name: '変更後' },
 			() => failing,
 		);
 		expect(ok).toBe(false);
-		expect(driveActionsStore.error).toBe('作成に失敗しました');
+		expect(driveActionsStore.error).toBe('変更に失敗しました');
 		driveActionsStore.clearError();
 		expect(driveActionsStore.error).toBeNull();
 	});
@@ -87,15 +87,15 @@ describe('基本操作ストアの多重実行', () => {
 
 	it('実行中は別の操作を受け付けない', async () => {
 		const gate = Promise.withResolvers<entities.DriveFolder>();
-		const slow = makeClient({ driveFoldersCreate: () => gate.promise });
-		const first = driveActionsStore.createFolder(
+		const slow = makeClient({ driveFoldersUpdate: () => gate.promise });
+		const first = driveActionsStore.rename(
 			account,
-			{ name: 'a', parentId: null },
+			{ item: { kind: 'folder', id: 'd1' }, name: 'a' },
 			() => slow,
 		);
-		const second = await driveActionsStore.createFolder(
+		const second = await driveActionsStore.rename(
 			account,
-			{ name: 'b', parentId: null },
+			{ item: { kind: 'folder', id: 'd1' }, name: 'b' },
 			() => makeClient(),
 		);
 		expect(second).toBe(false);

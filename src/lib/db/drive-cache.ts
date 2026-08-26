@@ -111,6 +111,17 @@ export const getCachedFile = async (accountId: string, fileId: string) => {
 };
 
 /**
+ * フォルダキャッシュを1件取得する
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param folderId - 取得するフォルダID
+ * @returns フォルダキャッシュ。存在しなければundefined
+ */
+export const getCachedFolder = async (accountId: string, folderId: string) => {
+	const db = await openDatabase();
+	return db.get('folders', [accountId, folderId]);
+};
+
+/**
  * キャッシュ上で複数のファイルを別フォルダへ移動する
  * @param accountId - 対象アカウントのアプリ内ID
  * @param fileIds - 移動するファイルIDの一覧

@@ -2,12 +2,12 @@ import type { AccountRecord, FileRecord } from '../db/schema';
 import type { ActionsClient, DriveItem } from '../services/drive-actions';
 import type { UploadClient, UploadEntry } from '../services/upload';
 import { collectDownloadEntries, downloadEntries } from '../services/download';
-import { copyFilesToFolder, moveItems } from '../services/drive-move';
+import { copyFilesToFolder, moveItems, selectItemsToMove } from '../services/drive-move';
+import { createFolder, deleteItems } from '../services/drive-actions';
 import { downloadLabel, notifyExisting, uploadLabel, zipNameFor } from './drive-task-labels';
 import { filesToUploadEntries, readDroppedEntries, uploadEntries } from '../services/upload';
 import type { ProgressReporter } from './queue.svelte';
 import { createDriveClient } from '../api/client';
-import { deleteItems } from '../services/drive-actions';
 import { driveStore } from './drive.svelte';
 import { queueStore } from './queue.svelte';
 import { syncStore } from './sync.svelte';
@@ -165,6 +165,35 @@ export const driveTasks = {
 	},
 
 	/**
+	 * フォルダの作成をキューへ積む
+	 * @param account - 対象アカウント
+	 * @param input - フォルダ名と親フォルダID
+	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
+	 * @returns 積んだタスクの識別子
+	 */
+	createFolder(
+		account: AccountRecord,
+		input: {
+			/** フォルダ名 */
+			name: string;
+			/** 親フォルダID(ルート直下はnull) */
+			parentId: string | null;
+		},
+		clientFactory: ActionsClientFactory = createDriveClient,
+	) {
+		return queueStore.enqueue({
+			account,
+			kind: 'create',
+			label: `フォルダ「${input.name}」を作成`,
+			run: withRefresh(account.id, async (report) => {
+				report(0, 1);
+				await createFolder(account.id, clientFactory(account.host, account.token), input);
+				report(1, 1);
+			}),
+		});
+	},
+
+	/**
 	 * 複数の項目の削除をキューへ積む
 	 * @param account - 対象アカウント
 	 * @param items - 削除する項目の一覧
@@ -191,12 +220,13 @@ export const driveTasks = {
 
 	/**
 	 * 複数の項目の移動をキューへ積む
+	 * 移動先自身や、すでに移動先に入っている項目は除外し、移動が必要な項目がなければ積まない
 	 * @param account - 対象アカウント
 	 * @param input - 移動する項目と移動先フォルダID
 	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
-	 * @returns 積んだタスクの識別子
+	 * @returns 積んだタスクの識別子。移動が必要な項目がなければnull
 	 */
-	moveItems(
+	async moveItems(
 		account: AccountRecord,
 		input: {
 			/** 移動する項目の一覧 */
@@ -206,13 +236,19 @@ export const driveTasks = {
 		},
 		clientFactory: ActionsClientFactory = createDriveClient,
 	) {
+		const items = await selectItemsToMove(account.id, input.items, input.targetFolderId);
+		if (items.length === 0) {
+			return null;
+		}
+
 		return queueStore.enqueue({
 			account,
 			kind: 'move',
-			label: `${input.items.length}件の移動`,
+			label: `${items.length}件の移動`,
 			run: withRefresh(account.id, (report) =>
 				moveItems(account.id, clientFactory(account.host, account.token), {
-					...input,
+					items,
+					targetFolderId: input.targetFolderId,
 					onProgress: report,
 				}),
 			),

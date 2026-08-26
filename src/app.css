@@ -81,6 +81,8 @@ html {
 	-moz-osx-font-smoothing: grayscale;
 	-webkit-text-size-adjust: 100%;
 	text-rendering: optimizeLegibility;
+	/* iOSが長押し中の要素へ重ねる灰色のハイライトを消す */
+	-webkit-tap-highlight-color: hsl(0 0% 0% / 0);
 	overscroll-behavior: none;
 }
 

@@ -257,7 +257,7 @@
 		{ondropitems}
 		{ondropfiles}
 	/>
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -- 余白クリックでの選択解除は補助操作(Escキーでも解除できる) -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -- OSファイルのドロップを一覧全体で受けるためのドラッグ操作 -->
 	<main
 		data-tour="list"
 		data-actionbar={phone && selectMode}
@@ -267,7 +267,6 @@
 		ondragover={handleAreaDragOver}
 		ondrop={handleAreaDrop}
 		ondropcapture={resetAreaDrag}
-		onclick={handleAreaClick}
 	>
 		<!-- 選択中はツールバーの枠ごと選択バーに置き換え、一覧の位置がずれないようにする(スマートフォンは下部のアクションバー、タブレットは選択モード中だけ) -->
 		<div>
@@ -305,60 +304,63 @@
 				/>
 			{/if}
 		</div>
-		{#if phone && viewMode === 'list'}
-			<PhoneFileList
-				{folders}
-				{files}
-				{selectedKeys}
-				{selectMode}
-				onselecttoggle={(kind, id) => {
-					onselectitem(kind, id, { toggle: true, range: false });
-				}}
-				onopenfolder={onnavigate}
-				{onpreviewfile}
-				{onopenmenu}
-				{emptyMessage}
-			/>
-		{:else if viewMode === 'list'}
-			<FileList
-				{folders}
-				{files}
-				{sortKey}
-				{sortOrder}
-				{selectedKeys}
-				{touch}
-				{selectMode}
-				{onsort}
-				{onselectitem}
-				onopenfolder={onnavigate}
-				{onpreviewfile}
-				{ondragstartitem}
-				{ondragenditem}
-				ondropinfolder={ondropitems}
-				ondropfilesinfolder={ondropfiles}
-				{onopenmenu}
-				{emptyMessage}
-			/>
-		{:else}
-			<FileGrid
-				{folders}
-				{files}
-				{selectedKeys}
-				{touch}
-				{selectMode}
-				dragEnabled={!phone}
-				{onselectitem}
-				onopenfolder={onnavigate}
-				{onpreviewfile}
-				{ondragstartitem}
-				{ondragenditem}
-				ondropinfolder={ondropitems}
-				ondropfilesinfolder={ondropfiles}
-				{onopenmenu}
-				{emptyMessage}
-				onbackgroundclick={onclearselection}
-			/>
-		{/if}
+		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -- 一覧の余白クリックでの選択解除は補助操作(Escキーでも解除できる) -->
+		<div onclick={handleAreaClick}>
+			{#if phone && viewMode === 'list'}
+				<PhoneFileList
+					{folders}
+					{files}
+					{selectedKeys}
+					{selectMode}
+					onselecttoggle={(kind, id) => {
+						onselectitem(kind, id, { toggle: true, range: false });
+					}}
+					onopenfolder={onnavigate}
+					{onpreviewfile}
+					{onopenmenu}
+					{emptyMessage}
+				/>
+			{:else if viewMode === 'list'}
+				<FileList
+					{folders}
+					{files}
+					{sortKey}
+					{sortOrder}
+					{selectedKeys}
+					{touch}
+					{selectMode}
+					{onsort}
+					{onselectitem}
+					onopenfolder={onnavigate}
+					{onpreviewfile}
+					{ondragstartitem}
+					{ondragenditem}
+					ondropinfolder={ondropitems}
+					ondropfilesinfolder={ondropfiles}
+					{onopenmenu}
+					{emptyMessage}
+				/>
+			{:else}
+				<FileGrid
+					{folders}
+					{files}
+					{selectedKeys}
+					{touch}
+					{selectMode}
+					dragEnabled={!phone}
+					{onselectitem}
+					onopenfolder={onnavigate}
+					{onpreviewfile}
+					{ondragstartitem}
+					{ondragenditem}
+					ondropinfolder={ondropitems}
+					ondropfilesinfolder={ondropfiles}
+					{onopenmenu}
+					{emptyMessage}
+					onbackgroundclick={onclearselection}
+				/>
+			{/if}
+		</div>
 	</main>
 	{#if detailsOpen && !phone}
 		<DetailsPanel
@@ -408,10 +410,29 @@
 		display: flex;
 		flex: 1;
 		flex-direction: column;
-		overflow-y: auto;
+		min-width: 0;
+	}
+
+	/* ツールバーと選択バーの共通枠 */
+	main > div:first-of-type {
+		display: flex;
+		flex-shrink: 0;
+		flex-direction: column;
+		justify-content: center;
 		padding: 20px;
+		padding-bottom: 15px;
+		min-height: 75px;
+	}
+
+	/* 一覧のスクロール領域 */
+	main > div:last-of-type {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		overflow-y: auto;
+		padding: 0 20px;
 		padding-bottom: calc(20px + env(safe-area-inset-bottom));
-		gap: 15px;
+		min-height: 0;
 		min-width: 0;
 		/* スクロールバーの出入りで幅が変わり、グリッドの列数が振動しないように常に領域を確保する */
 		scrollbar-gutter: stable;
@@ -419,18 +440,23 @@
 		overscroll-behavior: contain;
 	}
 
-	/* ツールバーと選択バーの共通枠。どちらが出ても高さを揃える */
-	main > div:first-of-type {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		min-height: 40px;
-	}
-
 	/* タッチ端末では選択バーを大きくしている(44px)ため、枠も揃えて切り替え時に一覧がズレないようにする */
 	@media (pointer: coarse) {
 		main > div:first-of-type {
-			min-height: 44px;
+			min-height: 80px;
+		}
+	}
+
+	/* スマートフォンはツールバーが2段で詰まって見えるため一覧との間隔を広げる */
+	@media (max-width: 640px) {
+		main > div:first-of-type {
+			min-height: 80px;
+		}
+	}
+
+	@media (pointer: coarse) and (max-width: 640px) {
+		main > div:first-of-type {
+			min-height: 84px;
 		}
 	}
 
@@ -440,7 +466,7 @@
 	}
 
 	/* 下部のアクションバーが一覧の末尾に重ならないように余白を確保する */
-	main[data-actionbar='true'] {
+	main[data-actionbar='true'] > div:last-of-type {
 		padding-bottom: calc(80px + env(safe-area-inset-bottom));
 	}
 

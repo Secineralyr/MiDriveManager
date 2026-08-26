@@ -71,7 +71,7 @@ const pasteCut = (
 		return 'error';
 	}
 
-	driveTasks.moveItems(account, { items: state.items, targetFolderId }, clientFactory);
+	const _ = driveTasks.moveItems(account, { items: state.items, targetFolderId }, clientFactory);
 	resetContent();
 	return 'moved';
 };

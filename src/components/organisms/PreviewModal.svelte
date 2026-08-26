@@ -28,11 +28,19 @@
 
 	let image = $state<HTMLImageElement | null>(null);
 
-	const kind = $derived(file === null ? 'other' : fileKind(file.type));
+	let displayed = $state<FileRecord | null>(null);
 
 	$effect(() => {
-		// ファイルが変わったら、メディアの読み込み表示をやり直す
-		mediaLoading = file !== null && fileKind(file.type) !== 'other';
+		if (file !== null) {
+			displayed = file;
+		}
+	});
+
+	const kind = $derived(displayed === null ? 'other' : fileKind(displayed.type));
+
+	$effect(() => {
+		// 表示するファイルが変わったら読み込み表示をやり直す
+		mediaLoading = displayed !== null && fileKind(displayed.type) !== 'other';
 	});
 
 	/** メディアの読み込み完了(または失敗)で読み込み表示を消す */
@@ -85,19 +93,20 @@
 	oncancel={handleCancelEvent}
 	onclick={handleDialogClick}
 >
-	{#if file !== null}
+	{#if displayed !== null}
+		{@const shown = displayed}
 		<header>
 			<button type="button" aria-label="プレビューを閉じる" onclick={onclose}>
 				<IconX size={20} />
 			</button>
-			<h2>{file.name}</h2>
-			<span>{file.type} / {formatFileSize(file.size)}</span>
+			<h2>{shown.name}</h2>
+			<span>{shown.type} / {formatFileSize(shown.size)}</span>
 			{#if ondetails !== undefined}
 				<button
 					type="button"
 					aria-label="詳細"
 					onclick={() => {
-						ondetails(file);
+						ondetails(shown);
 					}}
 				>
 					<IconInfoCircle size={20} />
@@ -108,7 +117,7 @@
 					type="button"
 					aria-label="ダウンロード"
 					onclick={() => {
-						ondownload(file);
+						ondownload(shown);
 					}}
 				>
 					<IconDownload size={20} />
@@ -126,8 +135,8 @@
 			{#if kind === 'image'}
 				<img
 					bind:this={image}
-					src={file.url}
-					alt={file.name}
+					src={shown.url}
+					alt={shown.name}
 					data-mediaready={!mediaLoading}
 					onload={handleMediaReady}
 					onerror={handleMediaReady}
@@ -135,7 +144,7 @@
 			{:else if kind === 'video'}
 				<!-- svelte-ignore a11y_media_has_caption -->
 				<video
-					src={file.url}
+					src={shown.url}
 					controls
 					data-mediaready={!mediaLoading}
 					onloadeddata={handleMediaReady}
@@ -143,7 +152,7 @@
 				></video>
 			{:else if kind === 'audio'}
 				<audio
-					src={file.url}
+					src={shown.url}
 					controls
 					data-mediaready={!mediaLoading}
 					oncanplay={handleMediaReady}
@@ -151,7 +160,7 @@
 				></audio>
 			{:else}
 				<p>
-					<FileTypeIcon mimeType={file.type} size={40} />
+					<FileTypeIcon mimeType={shown.type} size={40} />
 					<span>このファイルはプレビューできません</span>
 				</p>
 			{/if}
@@ -201,6 +210,21 @@
 
 	dialog::backdrop {
 		background-color: hsl(0 0% 5% / 0.5);
+	}
+
+	dialog[open]::backdrop {
+		opacity: 1;
+		transition: opacity 250ms ease;
+	}
+
+	@starting-style {
+		dialog[open]::backdrop {
+			opacity: 0;
+		}
+	}
+
+	dialog[open][data-closing='true']::backdrop {
+		opacity: 0;
 	}
 
 	header {

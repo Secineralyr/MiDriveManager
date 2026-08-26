@@ -141,6 +141,11 @@
 		min-width: 0;
 		user-select: none;
 		-webkit-user-select: none;
+		transition: background-color 250ms ease;
+	}
+
+	button:active {
+		background-color: var(--color-surface-hover);
 	}
 
 	button:focus-visible {

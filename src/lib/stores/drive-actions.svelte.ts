@@ -1,10 +1,5 @@
 import type { ActionsClient, DriveItem, FileMetadata } from '../services/drive-actions';
-import {
-	createFolder,
-	renameFile,
-	renameFolder,
-	updateFileMetadata,
-} from '../services/drive-actions';
+import { renameFile, renameFolder, updateFileMetadata } from '../services/drive-actions';
 import type { AccountRecord } from '../db/schema';
 import { createDriveClient } from '../api/client';
 import { driveStore } from './drive.svelte';
@@ -95,28 +90,6 @@ export const driveActionsStore = {
 	/** エラーメッセージを消す */
 	clearError() {
 		state.error = null;
-	},
-
-	/**
-	 * フォルダを作成する
-	 * @param account - 対象アカウント
-	 * @param input - フォルダ名と親フォルダID
-	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
-	 * @returns 成功したらtrue
-	 */
-	createFolder(
-		account: AccountRecord,
-		input: {
-			/** フォルダ名 */
-			name: string;
-			/** 親フォルダID(ルート直下はnull) */
-			parentId: string | null;
-		},
-		clientFactory: ActionsClientFactory = createDriveClient,
-	) {
-		return withAction(account.id, async () => {
-			await createFolder(account.id, clientFactory(account.host, account.token), input);
-		});
 	},
 
 	/**

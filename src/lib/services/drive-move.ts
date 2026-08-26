@@ -1,5 +1,10 @@
 import type { ActionsClient, DriveItem } from './drive-actions';
-import { moveCachedFiles, moveCachedFolder } from '../db/drive-cache';
+import {
+	getCachedFile,
+	getCachedFolder,
+	moveCachedFiles,
+	moveCachedFolder,
+} from '../db/drive-cache';
 import type { FileRecord } from '../db/schema';
 import { translateDriveError } from './drive-actions';
 
@@ -48,13 +53,31 @@ const planMove = (input: {
 const planTotal = (plan: MovePlan) => (plan.fileIds.length > 0 ? 1 : 0) + plan.folderIds.length;
 
 /**
+ * ファイルを1件ずつ移動する(drive/files/move-bulkがない古いMisskey向けのフォールバック)
+ * @param client - APIクライアント
+ * @param plan - 移動の実行計画
+ */
+const moveFilesOneByOne = async (client: ActionsClient, plan: MovePlan) => {
+	for (const fileId of plan.fileIds) {
+		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
+		await client.driveFilesUpdate({ fileId, folderId: plan.targetFolderId });
+	}
+};
+
+/**
  * ファイルをまとめて移動し、キャッシュを更新する
+ * move-bulkに失敗した場合(比較的新しいAPIのため古いMisskeyには存在しない)は1件ずつの移動へ切り替える
  * @param accountId - 対象アカウントのアプリ内ID
  * @param client - APIクライアント
  * @param plan - 移動の実行計画
  */
 const moveFilesBulk = async (accountId: string, client: ActionsClient, plan: MovePlan) => {
-	await client.driveFilesMoveBulk({ fileIds: plan.fileIds, folderId: plan.targetFolderId });
+	try {
+		await client.driveFilesMoveBulk({ fileIds: plan.fileIds, folderId: plan.targetFolderId });
+	} catch {
+		await moveFilesOneByOne(client, plan);
+	}
+
 	await moveCachedFiles(accountId, plan.fileIds, plan.targetFolderId);
 };
 
@@ -78,6 +101,47 @@ const moveFoldersSequentially = async (
 		await moveCachedFolder(accountId, folderId, plan.targetFolderId);
 		plan.onProgress?.(offset + index + 1, total);
 	}
+};
+
+/**
+ * 項目を移動すると実際に場所が変わるかどうかを判定する
+ * キャッシュに無い項目は判定できないため、移動が必要なものとして扱う
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param item - 移動する項目
+ * @param targetFolderId - 移動先のフォルダID(ルートはnull)
+ * @returns 場所が変わるならtrue
+ */
+const isMoveNeeded = async (accountId: string, item: DriveItem, targetFolderId: string | null) => {
+	if (item.kind === 'file') {
+		const record = await getCachedFile(accountId, item.id);
+		return record === undefined || record.folderId !== targetFolderId;
+	}
+
+	if (item.id === targetFolderId) {
+		return false;
+	}
+
+	const record = await getCachedFolder(accountId, item.id);
+	return record === undefined || record.parentId !== targetFolderId;
+};
+
+/**
+ * 移動対象から、移動しても場所が変わらない項目を除外する
+ * (すでに移動先に入っている項目や移動先自身を除き、不要なキュー投入とAPI呼び出しを避ける)
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param items - 移動する項目の一覧
+ * @param targetFolderId - 移動先のフォルダID(ルートはnull)
+ * @returns 移動が必要な項目の一覧
+ */
+export const selectItemsToMove = async (
+	accountId: string,
+	items: DriveItem[],
+	targetFolderId: string | null,
+) => {
+	const needed = await Promise.all(
+		items.map((item) => isMoveNeeded(accountId, item, targetFolderId)),
+	);
+	return items.filter((unused, index) => needed[index]);
 };
 
 /**

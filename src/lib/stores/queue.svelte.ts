@@ -1,7 +1,7 @@
 import type { AccountRecord } from '../db/schema';
 
 /** タスクの種類 */
-type TaskKindShape = 'upload' | 'download' | 'delete' | 'move' | 'copy';
+type TaskKindShape = 'upload' | 'download' | 'delete' | 'move' | 'copy' | 'create';
 
 /** タスクの状態 */
 type TaskStatusShape = 'pending' | 'running' | 'done' | 'failed';

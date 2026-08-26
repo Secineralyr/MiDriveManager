@@ -104,8 +104,10 @@ describe('切り取りの貼り付け', () => {
 		const result = await clipboardStore.pasteInto(account, 'target', () => client);
 		expect(result).toBe('moved');
 		expect(clipboardStore.hasContent).toBe(false);
-		await queueStore.whenIdle();
-		expect(moveBulk).toHaveBeenCalledWith({ fileIds: ['f1'], folderId: 'target' });
+		// 移動要否の判定が非同期になったため、キュー投入とAPI呼び出しを待って確認する
+		await vi.waitFor(() => {
+			expect(moveBulk).toHaveBeenCalledWith({ fileIds: ['f1'], folderId: 'target' });
+		});
 	});
 
 	it('別アカウントで切り取った項目はエラーになる', async () => {

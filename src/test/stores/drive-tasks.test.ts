@@ -53,8 +53,16 @@ const makeClient = () => {
 	const fileDelete = vi.fn<ActionsClient['driveFilesDelete']>().mockResolvedValue({});
 	const moveBulk = vi.fn<ActionsClient['driveFilesMoveBulk']>().mockResolvedValue({});
 	const uploadFromUrl = vi.fn<ActionsClient['driveFilesUploadFromUrl']>().mockResolvedValue({});
+	const folderCreate = vi.fn<ActionsClient['driveFoldersCreate']>().mockImplementation((params) =>
+		Promise.resolve({
+			id: 'new1',
+			createdAt: '2026-08-23T00:00:00.000Z',
+			name: params.name ?? '',
+			parentId: params.parentId ?? null,
+		}),
+	);
 	const client: ActionsClient = {
-		driveFoldersCreate: () => Promise.reject(new Error('未使用')),
+		driveFoldersCreate: folderCreate,
 		driveFoldersUpdate: () => Promise.reject(new Error('未使用')),
 		driveFoldersDelete: () => Promise.resolve({}),
 		driveFilesUpdate: () => Promise.reject(new Error('未使用')),
@@ -62,16 +70,16 @@ const makeClient = () => {
 		driveFilesMoveBulk: moveBulk,
 		driveFilesUploadFromUrl: uploadFromUrl,
 	};
-	return { client, fileDelete, moveBulk, uploadFromUrl };
+	return { client, fileDelete, moveBulk, uploadFromUrl, folderCreate };
 };
 
 /**
  * 識別子でタスクを探す
- * @param id - タスクの識別子
+ * @param id - タスクの識別子(積まれなかった場合のnullも受け、見つからない扱いにする)
  * @returns タスク
  * @throws {Error} タスクが見つからない場合
  */
-const findTask = (id: number) => {
+const findTask = (id: number | null) => {
 	const task = queueStore.tasks.find((candidate) => candidate.id === id);
 	if (task === undefined) {
 		throw new Error('タスクが見つかりません');
@@ -97,6 +105,22 @@ const reset = async () => {
 	await driveStore.openAccount('a1');
 };
 
+describe('フォルダ作成のキュー投入', () => {
+	beforeEach(reset);
+
+	it('フォルダ作成はキューで実行され、完了後に表示中のドライブへ反映される', async () => {
+		const { client, folderCreate } = makeClient();
+		const id = driveTasks.createFolder(account, { name: '新規', parentId: null }, () => client);
+		expect(findTask(id).kind).toBe('create');
+		expect(findTask(id).label).toBe('フォルダ「新規」を作成');
+
+		await queueStore.whenIdle();
+		expect(folderCreate).toHaveBeenCalledWith({ name: '新規', parentId: null });
+		expect(findTask(id).status).toBe('done');
+		expect(driveStore.childFolders.map((folder) => folder.id)).toStrictEqual(['new1']);
+	});
+});
+
 describe('削除のキュー投入', () => {
 	beforeEach(reset);
 
@@ -119,13 +143,54 @@ describe('削除のキュー投入', () => {
 	});
 });
 
+describe('移動の事前選別', () => {
+	beforeEach(reset);
+
+	it('すでに移動先にある項目だけの場合はキューへ積まれず、APIも呼ばれない', async () => {
+		const { client, moveBulk } = makeClient();
+		const before = queueStore.tasks.length;
+		const id = await driveTasks.moveItems(
+			account,
+			{ items: [{ kind: 'file', id: 'f1' }], targetFolderId: null },
+			() => client,
+		);
+		expect(id).toBeNull();
+		expect(queueStore.tasks).toHaveLength(before);
+		await queueStore.whenIdle();
+		expect(moveBulk).not.toHaveBeenCalled();
+	});
+
+	it('移動が必要な項目だけがキューとAPIの対象になる', async () => {
+		const db = await openDatabase();
+		await db.put('files', { ...makeFile('f2'), folderId: 'd1', folderKey: 'd1' });
+		const { client, moveBulk } = makeClient();
+		const id = await driveTasks.moveItems(
+			account,
+			{
+				items: [
+					{ kind: 'file', id: 'f1' },
+					{ kind: 'file', id: 'f2' },
+				],
+				targetFolderId: 'd1',
+			},
+			() => client,
+		);
+		expect(id).not.toBeNull();
+		expect(queueStore.tasks.at(-1)?.label).toBe('1件の移動');
+		await queueStore.whenIdle();
+		expect(moveBulk).toHaveBeenCalledWith({ fileIds: ['f1'], folderId: 'd1' });
+	});
+});
+
 describe('移動と複製のキュー投入', () => {
 	beforeEach(reset);
 
 	it('移動はキューで実行され、失敗した場合はエラーがタスクに残る', async () => {
 		const { client, moveBulk } = makeClient();
 		moveBulk.mockRejectedValue(new Error('移動できませんでした'));
-		const id = driveTasks.moveItems(
+		// bulkの失敗時は1件ずつの移動へフォールバックするため、そちらも同じ理由で失敗させる
+		client.driveFilesUpdate = () => Promise.reject(new Error('移動できませんでした'));
+		const id = await driveTasks.moveItems(
 			account,
 			{ items: [{ kind: 'file', id: 'f1' }], targetFolderId: 'd1' },
 			() => client,

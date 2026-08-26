@@ -154,7 +154,7 @@
 			menuPosition = null;
 		},
 		moveItems: (items, targetFolderId) => {
-			driveTasks.moveItems(account, { items, targetFolderId });
+			const _ = driveTasks.moveItems(account, { items, targetFolderId });
 		},
 		clearSelection: () => {
 			selectionStore.clear();
@@ -195,7 +195,7 @@
 	 */
 	const handleMoveSelection = (targetFolderId: string | null) => {
 		moveOpen = false;
-		driveTasks.moveItems(account, { items: deleteTargets, targetFolderId });
+		const _ = driveTasks.moveItems(account, { items: deleteTargets, targetFolderId });
 		selectionStore.clear();
 		selectMode = false;
 	};

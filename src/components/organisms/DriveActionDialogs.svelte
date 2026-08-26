@@ -43,11 +43,11 @@
 	};
 
 	/**
-	 * フォルダ作成を確定する(表示中のフォルダ直下に作る)
+	 * フォルダ作成を確定する(表示中のフォルダ直下に作るタスクを操作キューへ積む)
 	 * @param name - フォルダ名
 	 */
-	const handleCreate = async (name: string) => {
-		await driveActionsStore.createFolder(account, {
+	const handleCreate = (name: string) => {
+		driveTasks.createFolder(account, {
 			name,
 			parentId: driveStore.currentFolderId,
 		});
@@ -80,7 +80,6 @@
 	title="新しいフォルダ"
 	label="フォルダ名"
 	confirmLabel="作成"
-	busy={driveActionsStore.busy}
 	onconfirm={handleCreate}
 	oncancel={closeAll}
 />

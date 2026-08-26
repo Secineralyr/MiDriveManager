@@ -1,7 +1,7 @@
 import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDatabase, openDatabase } from '../../lib/db/database';
-import { copyFilesToFolder, moveItems } from '../../lib/services/drive-move';
+import { copyFilesToFolder, moveItems, selectItemsToMove } from '../../lib/services/drive-move';
 import type { ActionsClient } from '../../lib/services/drive-actions';
 import { stubIndexedDb } from '../indexeddb-test-util';
 
@@ -57,16 +57,21 @@ const makeMoveClient = () => {
 			Promise.resolve(makeFolder(params.folderId, params.parentId ?? null)),
 		);
 	const uploadFromUrl = vi.fn<ActionsClient['driveFilesUploadFromUrl']>().mockResolvedValue({});
+	const fileUpdate = vi
+		.fn<ActionsClient['driveFilesUpdate']>()
+		.mockImplementation((params) =>
+			Promise.resolve(makeFile(params.fileId, params.folderId ?? null)),
+		);
 	const client: ActionsClient = {
 		driveFoldersCreate: () => Promise.reject(new Error('未使用')),
 		driveFoldersUpdate: folderUpdate,
 		driveFoldersDelete: () => Promise.resolve({}),
-		driveFilesUpdate: () => Promise.reject(new Error('未使用')),
+		driveFilesUpdate: fileUpdate,
 		driveFilesDelete: () => Promise.resolve({}),
 		driveFilesMoveBulk: moveBulk,
 		driveFilesUploadFromUrl: uploadFromUrl,
 	};
-	return { client, moveBulk, folderUpdate, uploadFromUrl };
+	return { client, moveBulk, folderUpdate, uploadFromUrl, fileUpdate };
 };
 
 /** テストごとにIndexedDBを初期化してサンプルデータを投入する */
@@ -111,6 +116,64 @@ describe('項目の移動', () => {
 		const moved = await db.get('folders', ['a1', 'd1']);
 		expect(moved?.parentId).toBe('target');
 		expect(moved?.parentKey).toBe('target');
+	});
+});
+
+describe('move-bulk非対応のフォールバック', () => {
+	beforeEach(seed);
+
+	it('move-bulkに失敗した場合は1件ずつの更新で移動され、キャッシュも更新される', async () => {
+		const { client, moveBulk, fileUpdate } = makeMoveClient();
+		moveBulk.mockRejectedValue(
+			Object.assign(new Error('no such endpoint'), { code: 'NO_SUCH_ENDPOINT' }),
+		);
+		await moveItems('a1', client, {
+			items: [
+				{ kind: 'file', id: 'f1' },
+				{ kind: 'file', id: 'f2' },
+			],
+			targetFolderId: 'target',
+		});
+		expect(fileUpdate).toHaveBeenCalledTimes(2);
+		expect(fileUpdate).toHaveBeenCalledWith({ fileId: 'f1', folderId: 'target' });
+		const db = await openDatabase();
+		const moved = await db.get('files', ['a1', 'f2']);
+		expect(moved?.folderKey).toBe('target');
+	});
+});
+
+describe('移動の事前選別', () => {
+	beforeEach(seed);
+
+	it('すでに移動先にある項目と移動先自身は除外され、場所が変わる項目だけ残る', async () => {
+		const kept = await selectItemsToMove(
+			'a1',
+			[
+				{ kind: 'file', id: 'f1' },
+				{ kind: 'folder', id: 'd1' },
+				{ kind: 'folder', id: 'target' },
+			],
+			'target',
+		);
+		expect(kept).toStrictEqual([
+			{ kind: 'file', id: 'f1' },
+			{ kind: 'folder', id: 'd1' },
+		]);
+
+		const noMove = await selectItemsToMove(
+			'a1',
+			[
+				{ kind: 'file', id: 'f1' },
+				{ kind: 'folder', id: 'd1' },
+			],
+			null,
+		);
+		expect(noMove).toStrictEqual([]);
+	});
+
+	it('キャッシュに無い項目は判定できないため移動対象として残る', async () => {
+		const kept = await selectItemsToMove('a1', [{ kind: 'file', id: 'nope' }], null);
+		expect(kept).toStrictEqual([{ kind: 'file', id: 'nope' }]);
 	});
 });
 
