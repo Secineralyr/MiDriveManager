@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
+	import { tick, untrack } from 'svelte';
 	import type { FolderRecord } from '../../lib/db/schema';
 	import FolderTreeItem from '$components/molecules/FolderTreeItem.svelte';
 	import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
+	import { ancestorIds } from '../../lib/services/folder-tree';
 
 	type Props = {
 		/** 親キーごとの子フォルダ一覧 */
@@ -33,6 +35,55 @@
 
 	let expanded = $state<Record<string, boolean>>({});
 	let rootDropover = $state(false);
+	let nav = $state<HTMLElement | null>(null);
+
+	let lastScrolledId: string | null = null;
+
+	/** 展開の描画後に、現在の行が見える位置へスクロールする */
+	const scrollCurrentIntoView = async () => {
+		await tick();
+		nav?.querySelector('[data-current="true"]')?.scrollIntoView({
+			block: 'nearest',
+			behavior: 'smooth',
+		});
+	};
+
+	let autoExpandedIds: string[] = [];
+
+	/**
+	 * 経路に合わせて自動展開を更新する
+	 * 前回自動展開したうち経路から外れたものは折りたたみ、まだ開かれていない祖先を
+	 * 自動展開として開く(手動で開いていたものは自動扱いにしない)
+	 * @param path - 現在のフォルダの祖先ID
+	 */
+	const applyAutoExpansion = (path: string[]) => {
+		for (const id of autoExpandedIds) {
+			if (!path.includes(id)) {
+				expanded[id] = false;
+			}
+		}
+
+		const kept = autoExpandedIds.filter((id) => path.includes(id));
+		const added = path.filter((id) => expanded[id] !== true);
+		for (const id of added) {
+			expanded[id] = true;
+		}
+
+		autoExpandedIds = [...kept, ...added];
+	};
+
+	$effect(() => {
+		const path = ancestorIds(childrenMap, currentFolderId);
+		
+		untrack(() => {
+			applyAutoExpansion(path);
+
+			if (lastScrolledId !== currentFolderId) {
+				lastScrolledId = currentFolderId;
+				const _ = scrollCurrentIntoView();
+			}
+		});
+	});
 
 	/**
 	 * 受け入れられる種類ならルートへのドロップ受け入れを表明して強調する
@@ -71,6 +122,7 @@
 	const handleToggle = (folderId: string) => {
 		const current = expanded[folderId] ?? false;
 		expanded[folderId] = !current;
+		autoExpandedIds = autoExpandedIds.filter((id) => id !== folderId);
 	};
 
 	/**
@@ -80,12 +132,13 @@
 	const handleSelect = (folderId: string) => {
 		if (expandOnSelect) {
 			expanded[folderId] = true;
+			autoExpandedIds = autoExpandedIds.filter((id) => id !== folderId);
 		}
 		onnavigate(folderId);
 	};
 </script>
 
-<nav aria-label="フォルダツリー">
+<nav aria-label="フォルダツリー" bind:this={nav}>
 	<ul>
 		<li>
 			<div

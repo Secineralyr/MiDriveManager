@@ -44,6 +44,22 @@ const stepToParent = (walk: PathWalk, cursor: string): string | null => {
 };
 
 /**
+ * 子フォルダ一覧からフォルダIDごとの親IDを引ける索引を作る
+ * @param childrenMap - 親キーごとの子フォルダ一覧
+ * @returns フォルダIDごとの親フォルダID
+ */
+const parentIdIndex = (childrenMap: Record<string, FolderRecord[]>) => {
+	const parentOf: Record<string, string | null> = {};
+	for (const bucket of Object.values(childrenMap)) {
+		for (const folder of bucket) {
+			parentOf[folder.id] = folder.parentId;
+		}
+	}
+
+	return parentOf;
+};
+
+/**
  * フォルダ一覧から親キーごとの子フォルダ一覧を作る
  * キーはルート直下が空文字列、それ以外は親フォルダID。各一覧は名前順に並ぶ
  * @param folders - 全フォルダ
@@ -81,4 +97,28 @@ export const folderPath = (folders: FolderRecord[], folderId: string | null) => 
 	}
 
 	return walk.path;
+};
+
+/**
+ * 指定フォルダの祖先フォルダID(ルート側から順)を返す
+ * ツリーで現在のフォルダを見えるようにするための自動展開に使う
+ * @param childrenMap - 親キーごとの子フォルダ一覧
+ * @param folderId - 対象フォルダID(nullはルート)
+ * @returns 祖先フォルダIDの配列(対象自身は含まない。親を辿れない場合は辿れた範囲まで)
+ */
+export const ancestorIds = (
+	childrenMap: Record<string, FolderRecord[]>,
+	folderId: string | null,
+) => {
+	const parentOf = parentIdIndex(childrenMap);
+	const path: string[] = [];
+	const visited = new Set<string>();
+	let cursor = folderId === null ? null : (parentOf[folderId] ?? null);
+	while (cursor !== null && !visited.has(cursor)) {
+		visited.add(cursor);
+		path.unshift(cursor);
+		cursor = parentOf[cursor] ?? null;
+	}
+
+	return path;
 };

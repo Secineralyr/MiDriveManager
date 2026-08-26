@@ -1,4 +1,4 @@
-import { buildChildrenMap, folderPath } from '../../lib/services/folder-tree';
+import { ancestorIds, buildChildrenMap, folderPath } from '../../lib/services/folder-tree';
 import { describe, expect, it } from 'vitest';
 import type { FolderRecord } from '../../lib/db/schema';
 
@@ -61,5 +61,30 @@ describe('フォルダ経路の構築', () => {
 		const cyclic = [makeFolder('a', 'A', 'b'), makeFolder('b', 'B', 'a')];
 		const path = folderPath(cyclic, 'a');
 		expect(path.map((folder) => folder.id)).toStrictEqual(['b', 'a']);
+	});
+});
+
+describe('祖先フォルダIDの列挙', () => {
+	const folders = [
+		makeFolder('a', 'A', null),
+		makeFolder('b', 'B', 'a'),
+		makeFolder('c', 'C', 'b'),
+		makeFolder('x', 'X', null),
+	];
+	const map = buildChildrenMap(folders);
+
+	it('ルート側から順に祖先IDが並び、対象自身は含まない', () => {
+		expect(ancestorIds(map, 'c')).toStrictEqual(['a', 'b']);
+		expect(ancestorIds(map, 'a')).toStrictEqual([]);
+	});
+
+	it('ルート(null)や存在しないフォルダでは空になる', () => {
+		expect(ancestorIds(map, null)).toStrictEqual([]);
+		expect(ancestorIds(map, 'nope')).toStrictEqual([]);
+	});
+
+	it('親が循環していても無限ループしない', () => {
+		const loop = buildChildrenMap([makeFolder('p', 'P', 'q'), makeFolder('q', 'Q', 'p')]);
+		expect(ancestorIds(loop, 'p')).toStrictEqual(['p', 'q']);
 	});
 });
