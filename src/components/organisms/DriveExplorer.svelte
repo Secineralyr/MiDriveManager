@@ -276,7 +276,7 @@
 					ondownload={ondownloadselection}
 					ondelete={ondeleteselection}
 					onclear={tablet ? () => ontoggleselectmode?.() : onclearselection}
-					onmove={tablet ? onmoveselection : undefined}
+					onmove={onmoveselection}
 					clearLabel={tablet ? '選択を終了' : '選択を解除'}
 				/>
 			{:else}
