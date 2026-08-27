@@ -41,6 +41,20 @@ export const zipNameFor = (items: DriveItem[]) => {
 };
 
 /**
+ * 移動タスクの表示名を作る
+ * @param count - 移動する件数
+ * @param targetName - 移動先の表示名(不明ならnull)
+ * @returns 表示名(移動先が分かる場合はそれを含める)
+ */
+export const moveLabel = (count: number, targetName: string | null) => {
+	if (targetName === null) {
+		return `${count}件の移動`;
+	}
+
+	return `${count}件を「${targetName}」へ移動`;
+};
+
+/**
  * 既存のファイルが返された件数をトーストで知らせる
  * @param count - 既存のファイルが返された件数
  */

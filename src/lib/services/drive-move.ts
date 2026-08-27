@@ -186,3 +186,18 @@ export const moveItems = async (
 		throw translateDriveError(error);
 	}
 };
+
+/**
+ * 移動先の表示名を解決する(進行キューのラベル用)
+ * @param accountId - 対象アカウントのアプリ内ID
+ * @param targetFolderId - 移動先のフォルダID(ルートはnull)
+ * @returns ルートは「ルート」、キャッシュにあるフォルダはその名前、なければnull
+ */
+export const moveTargetName = async (accountId: string, targetFolderId: string | null) => {
+	if (targetFolderId === null) {
+		return 'ルート';
+	}
+
+	const record = await getCachedFolder(accountId, targetFolderId);
+	return record?.name ?? null;
+};

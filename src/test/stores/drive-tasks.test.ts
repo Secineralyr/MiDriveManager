@@ -198,6 +198,33 @@ describe('移動のキュー投入', () => {
 		expect(findTask(id).status).toBe('failed');
 		expect(findTask(id).error).toBe('移動できませんでした');
 	});
+
+	it('ラベルに移動先の名前が入る(キャッシュにない移動先は件数だけになる)', async () => {
+		const db = await openDatabase();
+		await db.put('folders', {
+			accountId: 'a1',
+			parentKey: '',
+			id: 'd1',
+			createdAt: '2026-08-23T00:00:00.000Z',
+			name: '写真',
+			parentId: null,
+		});
+		const { client } = makeClient();
+		const toFolder = await driveTasks.moveItems(
+			account,
+			{ items: [{ kind: 'file', id: 'f1' }], targetFolderId: 'd1' },
+			() => client,
+		);
+		expect(findTask(toFolder).label).toBe('1件を「写真」へ移動');
+
+		const toUnknown = await driveTasks.moveItems(
+			account,
+			{ items: [{ kind: 'file', id: 'f2' }], targetFolderId: 'nope' },
+			() => client,
+		);
+		expect(findTask(toUnknown).label).toBe('1件の移動');
+		await queueStore.whenIdle();
+	});
 });
 
 /**

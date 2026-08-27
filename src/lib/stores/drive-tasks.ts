@@ -1,15 +1,21 @@
 import type { ActionsClientFactory, UploadClientFactory } from './drive-task-helpers';
 import { collectDownloadEntries, downloadEntries } from '../services/download';
 import { createFolder, deleteItems } from '../services/drive-actions';
-import { downloadLabel, notifyExisting, uploadLabel, zipNameFor } from './drive-task-labels';
+import {
+	downloadLabel,
+	moveLabel,
+	notifyExisting,
+	uploadLabel,
+	zipNameFor,
+} from './drive-task-labels';
 import { filesToUploadEntries, readDroppedEntries, uploadEntries } from '../services/upload';
 import { makeMoveRun, withRefresh } from './drive-task-helpers';
+import { moveTargetName, selectItemsToMove } from '../services/drive-move';
 import type { AccountRecord } from '../db/schema';
 import type { DriveItem } from '../services/drive-actions';
 import type { UploadEntry } from '../services/upload';
 import { createDriveClient } from '../api/client';
 import { queueStore } from './queue.svelte';
-import { selectItemsToMove } from '../services/drive-move';
 
 /** ダウンロードの取得・保存の差し替え(テスト用) */
 type DownloadOverrides = Pick<Parameters<typeof downloadEntries>[0], 'fetchImpl' | 'save'>;
@@ -209,10 +215,11 @@ export const driveTasks = {
 			return null;
 		}
 
+		const targetName = await moveTargetName(account.id, input.targetFolderId);
 		return queueStore.enqueue({
 			account,
 			kind: 'move',
-			label: `${items.length}件の移動`,
+			label: moveLabel(items.length, targetName),
 			run: withRefresh(
 				account.id,
 				makeMoveRun({

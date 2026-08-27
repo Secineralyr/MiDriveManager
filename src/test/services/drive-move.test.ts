@@ -1,7 +1,7 @@
 import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDatabase, openDatabase } from '../../lib/db/database';
-import { moveItems, selectItemsToMove } from '../../lib/services/drive-move';
+import { moveItems, moveTargetName, selectItemsToMove } from '../../lib/services/drive-move';
 import type { ActionsClient } from '../../lib/services/drive-actions';
 import { stubIndexedDb } from '../indexeddb-test-util';
 
@@ -273,5 +273,18 @@ describe('移動の制約', () => {
 				targetFolderId: 'target',
 			}),
 		).rejects.toThrow('フォルダを自身の中へ移動することはできません');
+	});
+});
+
+describe('移動先の表示名', () => {
+	beforeEach(seed);
+
+	it('ルートは「ルート」、キャッシュにあるフォルダはその名前になる', async () => {
+		await expect(moveTargetName('a1', null)).resolves.toBe('ルート');
+		await expect(moveTargetName('a1', 'target')).resolves.toBe('フォルダtarget');
+	});
+
+	it('キャッシュにないフォルダはnullになる', async () => {
+		await expect(moveTargetName('a1', 'nope')).resolves.toBeNull();
 	});
 });
