@@ -7,6 +7,7 @@
 	} from '../../lib/services/detail-target';
 	import {
 		makeSelectionKey,
+		needsClearConfirm,
 		parseSelectionKey,
 		selectionStore,
 	} from '../../lib/stores/selection.svelte';
@@ -41,6 +42,7 @@
 	let selectMode = $state(false);
 	let detailsSheetOpen = $state(false);
 	let moveOpen = $state(false);
+	let clearConfirmOpen = $state(false);
 
 	const phone = $derived(viewportStore.phone);
 	const tablet = $derived(viewportStore.tablet);
@@ -102,6 +104,16 @@
 		effectiveKeys.length === 1 ? detailTargetName(detailTarget) : `${effectiveKeys.length}件選択`,
 	);
 
+	/** 誤操作になりうる経路(余白・背景クリック、Esc)からの選択解除。PCで10件以上なら確認を挟む */
+	const requestClearSelection = () => {
+		if (needsClearConfirm({ count: effectiveKeys.length, touch })) {
+			clearConfirmOpen = true;
+			return;
+		}
+
+		selectionStore.clear();
+	};
+
 	const shortcuts = createDriveShortcuts({
 		account: () => account,
 		orderedKeys: () => orderedKeys,
@@ -112,13 +124,11 @@
 			deleteOpen ||
 			previewFile !== null ||
 			detailsSheetOpen ||
-			moveOpen,
-		openDelete: () => {
-			deleteOpen = true;
-		},
-		openRename: () => {
-			renameOpen = true;
-		},
+			moveOpen ||
+			clearConfirmOpen,
+		openDelete: () => (deleteOpen = true),
+		openRename: () => (renameOpen = true),
+		requestClear: requestClearSelection,
 	});
 
 	/**
@@ -152,15 +162,11 @@
 		selectItem: selectIfUnselected,
 		selectedKeys: () => selectionStore.keys,
 		isMenuOpen: () => menuPosition !== null,
-		closeMenu: () => {
-			menuPosition = null;
-		},
+		closeMenu: () => (menuPosition = null),
 		moveItems: (items, targetFolderId) => {
 			const _ = driveTasks.moveItems(account, { items, targetFolderId });
 		},
-		clearSelection: () => {
-			selectionStore.clear();
-		},
+		clearSelection: () => selectionStore.clear(),
 	});
 
 	/**
@@ -317,23 +323,16 @@
 	}}
 	{selectionSize}
 	onnavigate={handleNavigate}
-	onsort={(key) => {
-		driveStore.toggleSort(key);
-	}}
-	onviewmode={(mode) => {
-		driveStore.changeViewMode(mode);
-	}}
+	onsort={(key) => driveStore.toggleSort(key)}
+	onviewmode={(mode) => driveStore.changeViewMode(mode)}
 	onselectitem={handleSelectItem}
-	onclearselection={() => {
-		selectionStore.clear();
-	}}
+	onclearselection={() => selectionStore.clear()}
+	onrequestclearselection={requestClearSelection}
 	onclosedetails={() => {
 		desktopDetailsOpen = false;
 		detailsSheetOpen = false;
 	}}
-	onpreviewfile={(file) => {
-		previewFile = file;
-	}}
+	onpreviewfile={(file) => (previewFile = file)}
 	oncreatefolder={() => {
 		createParentId = driveStore.currentFolderId;
 		createOpen = true;
@@ -358,9 +357,7 @@
 	ondownloadselection={downloadSelection}
 	onopenmenu={handleOpenMenu}
 	searchQuery={searchResult === null ? null : searchStore.query}
-	onclearsearch={() => {
-		searchStore.clear();
-	}}
+	onclearsearch={() => searchStore.clear()}
 	{phone}
 	{tablet}
 	{selectMode}
@@ -376,9 +373,7 @@
 	{menuPosition}
 	targets={deleteTargets}
 	title={sheetTitle}
-	onclosemenu={() => {
-		menuPosition = null;
-	}}
+	onclosemenu={() => (menuPosition = null)}
 	onaction={(action) => {
 		if (action === 'download') {
 			downloadSelection();
@@ -425,6 +420,11 @@
 	{renameItem}
 	{renameInitial}
 	{deleteTargets}
+	bind:clearConfirmOpen
+	clearCount={effectiveKeys.length}
+	onclearselection={() => {
+		selectionStore.clear();
+	}}
 />
 
 <PreviewModal

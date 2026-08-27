@@ -50,6 +50,8 @@
 		onselectitem: (kind: 'file' | 'folder', id: string, modifiers: SelectModifiers) => void;
 		/** 選択解除時の処理 */
 		onclearselection: () => void;
+		/** 誤操作になりうる経路(余白・背景クリック)からの選択解除(未指定ならonclearselectionを使う) */
+		onrequestclearselection?: () => void;
 		/** 詳細パネルを閉じる操作 */
 		onclosedetails: () => void;
 		/** デスクトップの詳細パネルの開閉トグル(ボタンはデスクトップでのみ表示) */
@@ -121,6 +123,7 @@
 		onviewmode,
 		onselectitem,
 		onclearselection,
+		onrequestclearselection,
 		onclosedetails,
 		ontoggledetails,
 		onpreviewfile,
@@ -238,7 +241,7 @@
 	 */
 	const handleAreaClick = (event: MouseEvent) => {
 		if (event.target === event.currentTarget) {
-			onclearselection();
+			(onrequestclearselection ?? onclearselection)();
 		}
 	};
 </script>
@@ -361,7 +364,7 @@
 					ondropfilesinfolder={ondropfiles}
 					{onopenmenu}
 					{emptyMessage}
-					onbackgroundclick={onclearselection}
+					onbackgroundclick={onrequestclearselection ?? onclearselection}
 				/>
 			{/if}
 		</div>

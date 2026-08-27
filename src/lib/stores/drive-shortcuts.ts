@@ -22,6 +22,8 @@ type ShortcutContext = {
 	openDelete: () => void;
 	/** 名前の変更を開く */
 	openRename: () => void;
+	/** 選択解除の要求(確認を挟むかどうかはページ側が判断する) */
+	requestClear: () => void;
 };
 
 /** キー入力のうちショートカット判定に必要な部分 */
@@ -118,7 +120,7 @@ const runShortcut = (context: ShortcutContext, action: ShortcutAction) => {
 			}
 		},
 		clearSelection: () => {
-			selectionStore.clear();
+			context.requestClear();
 		},
 	};
 

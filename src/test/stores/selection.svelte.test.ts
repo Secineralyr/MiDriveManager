@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	makeSelectionKey,
+	needsClearConfirm,
 	parseSelectionKey,
 	selectionStore,
 } from '../../lib/stores/selection.svelte';
@@ -79,5 +80,21 @@ describe('範囲選択と全選択', () => {
 		selectionStore.clear();
 		expect(selectionStore.count).toBe(0);
 		expect(selectionStore.last).toBeNull();
+	});
+});
+
+describe('選択解除の確認判定', () => {
+	it('PCで10件以上の選択なら確認を挟む', () => {
+		expect(needsClearConfirm({ count: 10, touch: false })).toBe(true);
+		expect(needsClearConfirm({ count: 25, touch: false })).toBe(true);
+	});
+
+	it('PCでも9件以下なら確認しない', () => {
+		expect(needsClearConfirm({ count: 9, touch: false })).toBe(false);
+		expect(needsClearConfirm({ count: 0, touch: false })).toBe(false);
+	});
+
+	it('タッチ操作端末では件数に関わらず確認しない', () => {
+		expect(needsClearConfirm({ count: 10, touch: true })).toBe(false);
 	});
 });

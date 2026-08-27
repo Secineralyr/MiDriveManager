@@ -66,6 +66,7 @@ const keyInput = (key: string, ctrl: boolean) => ({
 const makeShortcuts = () => {
 	const openDelete = vi.fn<() => void>();
 	const openRename = vi.fn<() => void>();
+	const requestClear = vi.fn<() => void>();
 	const orderedKeys = ['file:f1', 'file:f2'];
 	const shortcuts = createDriveShortcuts({
 		account: () => account,
@@ -74,8 +75,9 @@ const makeShortcuts = () => {
 		blocked: () => false,
 		openDelete,
 		openRename,
+		requestClear,
 	});
-	return { shortcuts, openDelete, openRename };
+	return { shortcuts, openDelete, openRename, requestClear };
 };
 
 /** OSクリップボードへの書き込みを記録するモック */
@@ -136,6 +138,14 @@ describe('キー入力のショートカット', () => {
 		shortcuts.handleKeydown(keyInput('F2', false));
 		expect(openDelete).toHaveBeenCalledWith();
 		expect(openRename).not.toHaveBeenCalled();
+	});
+
+	it('Escapeは選択を直接解除せず、ページ側のrequestClearへ委譲する', () => {
+		const { shortcuts, requestClear } = makeShortcuts();
+		selectionStore.selectAll(['file:f1', 'file:f2']);
+		shortcuts.handleKeydown(keyInput('Escape', false));
+		expect(requestClear).toHaveBeenCalledWith();
+		expect(selectionStore.keys).toHaveLength(2);
 	});
 
 	it('入力欄が発生元の場合は無視する', () => {

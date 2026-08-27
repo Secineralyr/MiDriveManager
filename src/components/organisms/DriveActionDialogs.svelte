@@ -25,6 +25,12 @@
 		renameInitial: string;
 		/** 削除対象の項目一覧 */
 		deleteTargets: DriveItem[];
+		/** 選択解除の確認ダイアログの表示状態(バインド可能。PCで大きな選択を誤って解除しそうな時に開く) */
+		clearConfirmOpen?: boolean;
+		/** 選択解除の確認に表示する選択件数 */
+		clearCount?: number;
+		/** 選択解除の確認で解除が確定した時の処理 */
+		onclearselection?: () => void;
 	};
 
 	let {
@@ -36,6 +42,9 @@
 		renameItem,
 		renameInitial,
 		deleteTargets,
+		clearConfirmOpen = $bindable(false),
+		clearCount = 0,
+		onclearselection,
 	}: Props = $props();
 
 	/** すべての操作ダイアログを閉じる */
@@ -43,6 +52,7 @@
 		createOpen = false;
 		renameOpen = false;
 		deleteOpen = false;
+		clearConfirmOpen = false;
 	};
 
 	/**
@@ -68,6 +78,12 @@
 		}
 		await driveActionsStore.rename(account, { item: renameItem, name });
 		renameOpen = false;
+	};
+
+	/** 選択解除の確認を確定する */
+	const handleClearSelection = () => {
+		clearConfirmOpen = false;
+		onclearselection?.();
 	};
 
 	/** 削除を確定する(操作キューへ積み、選択は解除する) */
@@ -105,5 +121,14 @@
 	confirmLabel="削除"
 	danger
 	onconfirm={handleDelete}
+	oncancel={closeAll}
+/>
+
+<ConfirmDialog
+	open={clearConfirmOpen}
+	title="選択の解除"
+	message="{clearCount}件の項目が選択されています。選択を解除しますか?"
+	confirmLabel="解除"
+	onconfirm={handleClearSelection}
 	oncancel={closeAll}
 />

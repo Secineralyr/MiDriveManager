@@ -14,6 +14,8 @@ type SelectionState = {
 	anchor: string | null;
 };
 
+const CLEAR_CONFIRM_MIN_COUNT = 10;
+
 const state = $state<SelectionState>({
 	keys: [],
 	anchor: null,
@@ -143,3 +145,17 @@ export const selectionStore = {
 		state.anchor = null;
 	},
 };
+
+/**
+ * 選択解除の前に確認ダイアログを挟むべきかどうか
+ * 誤操作で大きな選択を失いやすいPC(マウス操作)のみ、一定件数以上の選択で確認する
+ * (タブレット・スマートフォンは選択モードが分かれているため対象外)
+ * @param input - 選択件数とタッチ操作端末かどうか
+ * @returns 確認を挟むならtrue
+ */
+export const needsClearConfirm = (input: {
+	/** 現在の選択件数 */
+	count: number;
+	/** タッチ操作端末(タブレット・スマートフォン)かどうか */
+	touch: boolean;
+}) => !input.touch && input.count >= CLEAR_CONFIRM_MIN_COUNT;
