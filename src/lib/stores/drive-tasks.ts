@@ -3,13 +3,13 @@ import { collectDownloadEntries, downloadEntries } from '../services/download';
 import { createFolder, deleteItems } from '../services/drive-actions';
 import { downloadLabel, notifyExisting, uploadLabel, zipNameFor } from './drive-task-labels';
 import { filesToUploadEntries, readDroppedEntries, uploadEntries } from '../services/upload';
-import { moveItems, selectItemsToMove } from '../services/drive-move';
+import { makeMoveRun, withRefresh } from './drive-task-helpers';
 import type { AccountRecord } from '../db/schema';
 import type { DriveItem } from '../services/drive-actions';
 import type { UploadEntry } from '../services/upload';
 import { createDriveClient } from '../api/client';
 import { queueStore } from './queue.svelte';
-import { withRefresh } from './drive-task-helpers';
+import { selectItemsToMove } from '../services/drive-move';
 
 /** ダウンロードの取得・保存の差し替え(テスト用) */
 type DownloadOverrides = Pick<Parameters<typeof downloadEntries>[0], 'fetchImpl' | 'save'>;
@@ -188,6 +188,7 @@ export const driveTasks = {
 	/**
 	 * 複数の項目の移動をキューへ積む
 	 * 移動先自身や、すでに移動先に入っている項目は除外し、移動が必要な項目がなければ積まない
+	 * 途中で失敗した後の再試行は、移動済みの項目を除いた残りだけで途中から再開される
 	 * @param account - 対象アカウント
 	 * @param input - 移動する項目と移動先フォルダID
 	 * @param clientFactory - APIクライアントの生成関数(テスト用に差し替え可能)
@@ -212,11 +213,13 @@ export const driveTasks = {
 			account,
 			kind: 'move',
 			label: `${items.length}件の移動`,
-			run: withRefresh(account.id, (report) =>
-				moveItems(account.id, clientFactory(account.host, account.token), {
+			run: withRefresh(
+				account.id,
+				makeMoveRun({
+					account,
 					items,
 					targetFolderId: input.targetFolderId,
-					onProgress: report,
+					clientFactory,
 				}),
 			),
 		});

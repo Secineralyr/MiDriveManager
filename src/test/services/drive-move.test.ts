@@ -159,6 +159,34 @@ describe('move-bulk非対応のフォールバック', () => {
 	});
 });
 
+describe('フォールバック途中失敗時のキャッシュ', () => {
+	beforeEach(seed);
+
+	it('途中で失敗しても、完了した分のキャッシュは更新されている', async () => {
+		const { client, moveBulk, fileUpdate } = makeMoveClient();
+		moveBulk.mockRejectedValue(
+			Object.assign(new Error('no such endpoint'), { code: 'NO_SUCH_ENDPOINT' }),
+		);
+		fileUpdate.mockResolvedValueOnce(makeFile('f1', 'target'));
+		fileUpdate.mockRejectedValueOnce(new Error('移動できませんでした'));
+		await expect(
+			moveItems('a1', client, {
+				items: [
+					{ kind: 'file', id: 'f1' },
+					{ kind: 'file', id: 'f2' },
+				],
+				targetFolderId: 'target',
+			}),
+		).rejects.toThrow('移動できませんでした');
+
+		const db = await openDatabase();
+		const movedFirst = await db.get('files', ['a1', 'f1']);
+		const keptSecond = await db.get('files', ['a1', 'f2']);
+		expect(movedFirst?.folderId).toBe('target');
+		expect(keptSecond?.folderId).toBeNull();
+	});
+});
+
 describe('移動の進捗', () => {
 	beforeEach(seed);
 

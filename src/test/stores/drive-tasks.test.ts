@@ -199,3 +199,52 @@ describe('移動のキュー投入', () => {
 		expect(findTask(id).error).toBe('移動できませんでした');
 	});
 });
+
+/**
+ * フォールバック時にf1は成功、f2は初回だけ失敗するクライアントで2件の移動を積む
+ * @returns 積んだタスクの識別子とファイル更新モック
+ */
+const enqueueResumableMove = async () => {
+	const { client, moveBulk } = makeClient();
+	moveBulk.mockRejectedValue(new Error('no such endpoint'));
+	const fileUpdate = vi
+		.fn<ActionsClient['driveFilesUpdate']>()
+		.mockResolvedValueOnce(makeFile('f1'))
+		.mockRejectedValueOnce(new Error('移動できませんでした'))
+		.mockResolvedValue(makeFile('f2'));
+	client.driveFilesUpdate = fileUpdate;
+	const id = await driveTasks.moveItems(
+		account,
+		{
+			items: [
+				{ kind: 'file', id: 'f1' },
+				{ kind: 'file', id: 'f2' },
+			],
+			targetFolderId: 'd1',
+		},
+		() => client,
+	);
+	return { id, fileUpdate };
+};
+
+describe('移動の再試行', () => {
+	beforeEach(reset);
+
+	it('フォールバック途中で失敗した後の再試行は、残りの項目だけで途中から再開される', async () => {
+		const { id, fileUpdate } = await enqueueResumableMove();
+		await queueStore.whenIdle();
+		expect(findTask(id).status).toBe('failed');
+		expect(findTask(id).progress).toStrictEqual({ done: 1, total: 2 });
+
+		queueStore.retry(findTask(id).id);
+		await queueStore.whenIdle();
+		expect(findTask(id).status).toBe('done');
+		expect(findTask(id).progress).toStrictEqual({ done: 2, total: 2 });
+		// 1回目はf1成功→f2失敗、再試行は移動済みのf1を除いたf2だけが対象になる
+		expect(fileUpdate.mock.calls).toStrictEqual([
+			[{ fileId: 'f1', folderId: 'd1' }],
+			[{ fileId: 'f2', folderId: 'd1' }],
+			[{ fileId: 'f2', folderId: 'd1' }],
+		]);
+	});
+});

@@ -53,15 +53,19 @@ const planTotal = (plan: MovePlan) => plan.fileIds.length + plan.folderIds.lengt
 
 /**
  * ファイルを1件ずつ移動する(drive/files/move-bulkがない古いMisskey向けのフォールバック)
- * updateを1回打つごとに進捗を通知する
+ * updateを1回打つごとにキャッシュを更新し、進捗を通知する
+ * (途中で失敗しても完了分はキャッシュに反映済みになり、再試行の事前選別で除外できる)
+ * @param accountId - 対象アカウントのアプリ内ID
  * @param client - APIクライアント
  * @param plan - 移動の実行計画
  */
-const moveFilesOneByOne = async (client: ActionsClient, plan: MovePlan) => {
+const moveFilesOneByOne = async (accountId: string, client: ActionsClient, plan: MovePlan) => {
 	const total = planTotal(plan);
 	for (const [index, fileId] of plan.fileIds.entries()) {
 		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
 		await client.driveFilesUpdate({ fileId, folderId: plan.targetFolderId });
+		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
+		await moveCachedFiles(accountId, [fileId], plan.targetFolderId);
 		plan.onProgress?.(index + 1, total);
 	}
 };
@@ -76,11 +80,13 @@ const moveFilesOneByOne = async (client: ActionsClient, plan: MovePlan) => {
 const moveFilesBulk = async (accountId: string, client: ActionsClient, plan: MovePlan) => {
 	try {
 		await client.driveFilesMoveBulk({ fileIds: plan.fileIds, folderId: plan.targetFolderId });
-		plan.onProgress?.(plan.fileIds.length, planTotal(plan));
 	} catch {
-		await moveFilesOneByOne(client, plan);
+		// フォールバック側が1件ずつキャッシュを更新するのでここでのまとめて更新はしない
+		await moveFilesOneByOne(accountId, client, plan);
+		return;
 	}
 
+	plan.onProgress?.(plan.fileIds.length, planTotal(plan));
 	await moveCachedFiles(accountId, plan.fileIds, plan.targetFolderId);
 };
 
