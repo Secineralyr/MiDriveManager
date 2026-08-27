@@ -43,6 +43,9 @@
 	args={{
 		breadcrumb,
 		viewMode: 'grid',
+		sortKey: 'name',
+		sortOrder: 'asc',
+		onsort: () => {},
 		onnavigate: () => {},
 		onviewmode: () => {},
 		oncreatefolder: () => {},

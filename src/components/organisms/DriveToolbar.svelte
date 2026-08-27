@@ -1,6 +1,8 @@
 <script lang="ts">
+	import type { SortKey, SortOrder } from '../../lib/utils/drive-sort';
 	import Breadcrumbs from '$components/molecules/Breadcrumbs.svelte';
 	import Button from '$components/atoms/Button.svelte';
+	import ContextMenu from '$components/molecules/ContextMenu.svelte';
 	import type { FolderRecord } from '../../lib/db/schema';
 	import IconArrowsSort from '@tabler/icons-svelte/icons/arrows-sort';
 	import IconButton from '$components/atoms/IconButton.svelte';
@@ -11,6 +13,7 @@
 	import IconX from '@tabler/icons-svelte/icons/x';
 	import type { ViewMode } from '../../lib/db/settings';
 	import ViewModeSwitch from '$components/molecules/ViewModeSwitch.svelte';
+	import { sortMenuItems } from '../../lib/utils/drive-sort';
 
 	type Props = {
 		/** ルートから表示中フォルダまでの経路 */
@@ -41,8 +44,14 @@
 		selectMode?: boolean;
 		/** 選択モードの開始・終了(スマートフォン用。ボタンはスマートフォンでのみ表示) */
 		ontoggleselect?: () => void;
-		/** 並び替えシートを開く操作(スマートフォン用。ボタンはスマートフォンでのみ表示) */
+		/** 並び替えシートを開く操作(スマートフォン用) */
 		onopensort?: () => void;
+		/** 並び替えの基準(グリッド表示のドロップダウン用) */
+		sortKey?: SortKey;
+		/** 並び替えの方向(グリッド表示のドロップダウン用) */
+		sortOrder?: SortOrder;
+		/** 並び替え変更時の処理(グリッド表示のドロップダウン用) */
+		onsort?: (key: SortKey) => void;
 		/** スマートフォン表示かどうか(パンくずの省略メニューをシートにする) */
 		phone?: boolean;
 		/** 詳細パネルを開いているか(デスクトップのトグルボタンの状態表示用) */
@@ -67,12 +76,35 @@
 		selectMode = false,
 		ontoggleselect,
 		onopensort,
+		sortKey = 'name',
+		sortOrder = 'asc',
+		onsort,
 		phone = false,
 		detailsOpen = false,
 		ontoggledetails,
 	}: Props = $props();
 
 	let fileInput = $state<HTMLInputElement | null>(null);
+	let sortAnchor = $state<HTMLElement | null>(null);
+	let sortMenuPosition = $state<{
+		/** ビューポート基準のx座標 */
+		x: number;
+		/** ビューポート基準のy座標 */
+		y: number;
+	} | null>(null);
+
+	/** 並び替えボタンの操作(スマートフォンはシート、それ以外はボタン直下のメニューを開く) */
+	const handleSortClick = () => {
+		if (phone) {
+			onopensort?.();
+			return;
+		}
+
+		const rect = sortAnchor?.getBoundingClientRect();
+		if (rect !== undefined) {
+			sortMenuPosition = { x: rect.left, y: rect.bottom + 5 };
+		}
+	};
 
 	/** ファイル選択ダイアログを開く */
 	const openFilePicker = () => {
@@ -132,8 +164,8 @@
 					<IconFolderPlus size={18} />
 				</IconButton>
 			{/if}
-			<span data-phone-only>
-				<IconButton label="並び替え" onclick={onopensort}>
+			<span data-sort-button data-grid={viewMode === 'grid'} bind:this={sortAnchor}>
+				<IconButton label="並び替え" onclick={handleSortClick}>
 					<IconArrowsSort size={18} />
 				</IconButton>
 			</span>
@@ -150,6 +182,16 @@
 		</span>
 	</div>
 </div>
+
+<ContextMenu
+	open={sortMenuPosition !== null}
+	x={sortMenuPosition?.x ?? 0}
+	y={sortMenuPosition?.y ?? 0}
+	items={sortMenuItems(sortKey, sortOrder)}
+	anchor={sortAnchor}
+	onselect={(key) => onsort?.(key)}
+	onclose={() => (sortMenuPosition = null)}
+/>
 
 <style>
 	div {
@@ -194,10 +236,15 @@
 		display: none;
 	}
 
-	/* 並び替えのボタンはスマートフォンだけ、選択モードのボタンはタブレット以下で表示する */
-	span[data-phone-only],
+	/* 並び替えのボタンはスマートフォン(常時)とグリッド表示の時だけ、選択モードのボタンはタブレット以下で表示する */
+	span[data-sort-button],
 	span[data-select-toggle] {
 		display: none;
+	}
+
+	/* グリッド表示は一覧のヘッダーがないため、並び替えのドロップダウンを出す */
+	span[data-sort-button][data-grid='true'] {
+		display: inline-flex;
 	}
 
 	/* 選択モードはタッチ端末と、スマートフォンレイアウトになる狭い画面で使う */
@@ -235,7 +282,7 @@
 			display: inline-flex;
 		}
 
-		span[data-phone-only] {
+		span[data-sort-button] {
 			display: inline-flex;
 		}
 	}

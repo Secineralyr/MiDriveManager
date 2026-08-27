@@ -34,6 +34,31 @@ const compareFiles = (a: FileRecord, b: FileRecord, key: SortKeyShape) => {
 	return a.createdAt.localeCompare(b.createdAt);
 };
 
+const SORT_LABELS: { key: SortKeyShape; label: string }[] = [
+	{ key: 'name', label: '名前' },
+	{ key: 'createdAt', label: '追加日' },
+	{ key: 'size', label: 'ファイルサイズ' },
+];
+
+/**
+ * メニュー項目の表示名を作る(現在の基準には方向を添える)
+ * @param entry - 項目の基準と表示名
+ * @param sortKey - 現在の並び替えの基準
+ * @param sortOrder - 現在の並び替えの方向
+ * @returns 表示名
+ */
+const sortItemLabel = (
+	entry: { key: SortKeyShape; label: string },
+	sortKey: SortKeyShape,
+	sortOrder: SortOrderShape,
+) => {
+	if (entry.key !== sortKey) {
+		return entry.label;
+	}
+
+	return `${entry.label}(${sortOrder === 'asc' ? '昇順' : '降順'})`;
+};
+
 /** 並び替えの基準 */
 export type SortKey = SortKeyShape;
 
@@ -68,3 +93,17 @@ export const sortFolders = (folders: FolderRecord[], key: SortKey, order: SortOr
  */
 export const sortFiles = (files: FileRecord[], key: SortKey, order: SortOrder) =>
 	files.toSorted((a, b) => applyOrder(compareFiles(a, b, key), order));
+
+/**
+ * 並び替えメニュー(シート・ドロップダウン共用)の項目を作る
+ * 現在の基準にはチェックと方向(昇順/降順)を付ける
+ * @param sortKey - 現在の並び替えの基準
+ * @param sortOrder - 現在の並び替えの方向
+ * @returns メニュー項目
+ */
+export const sortMenuItems = (sortKey: SortKey, sortOrder: SortOrder) =>
+	SORT_LABELS.map((entry) => ({
+		id: entry.key,
+		label: sortItemLabel(entry, sortKey, sortOrder),
+		checked: entry.key === sortKey,
+	}));

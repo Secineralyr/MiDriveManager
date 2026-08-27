@@ -14,6 +14,7 @@
 	import type { SelectModifiers } from '../../lib/stores/selection.svelte';
 	import SelectionBar from '$components/molecules/SelectionBar.svelte';
 	import type { ViewMode } from '../../lib/db/settings';
+	import { sortMenuItems } from '../../lib/utils/drive-sort';
 
 	type Props = {
 		/** 親キーごとの子フォルダ一覧(ツリー用) */
@@ -158,22 +159,7 @@
 
 	let sortOpen = $state(false);
 
-	const SORT_LABELS: { key: SortKey; label: string }[] = [
-		{ key: 'name', label: '名前' },
-		{ key: 'createdAt', label: '追加日' },
-		{ key: 'size', label: 'ファイルサイズ' },
-	];
-
-	const sortItems = $derived(
-		SORT_LABELS.map((entry) => ({
-			id: entry.key,
-			label:
-				entry.key === sortKey
-					? `${entry.label}(${sortOrder === 'asc' ? '昇順' : '降順'})`
-					: entry.label,
-			checked: entry.key === sortKey,
-		})),
-	);
+	const sortItems = $derived(sortMenuItems(sortKey, sortOrder));
 
 	/** 一覧領域内でOSファイルをドラッグしている深さ(子要素の出入りで増減するため数で持つ) */
 	let fileDragDepth = $state(0);
@@ -305,6 +291,9 @@
 					onopensort={() => {
 						sortOpen = true;
 					}}
+					{sortKey}
+					{sortOrder}
+					{onsort}
 					{phone}
 					{detailsOpen}
 					{ontoggledetails}

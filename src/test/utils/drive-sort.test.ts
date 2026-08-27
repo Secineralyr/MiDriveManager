@@ -1,6 +1,6 @@
 import type { FileRecord, FolderRecord } from '../../lib/db/schema';
 import { describe, expect, it } from 'vitest';
-import { sortFiles, sortFolders } from '../../lib/utils/drive-sort';
+import { sortFiles, sortFolders, sortMenuItems } from '../../lib/utils/drive-sort';
 
 /**
  * テスト用のフォルダを作る
@@ -117,5 +117,24 @@ describe('フォルダの並び替え', () => {
 			'd1',
 			'd2',
 		]);
+	});
+});
+
+describe('並び替えメニューの項目', () => {
+	it('現在の基準にはチェックと方向が付き、他は表示名だけになる', () => {
+		expect(sortMenuItems('name', 'asc')).toStrictEqual([
+			{ id: 'name', label: '名前(昇順)', checked: true },
+			{ id: 'createdAt', label: '追加日', checked: false },
+			{ id: 'size', label: 'ファイルサイズ', checked: false },
+		]);
+	});
+
+	it('降順の時は方向の表示が降順になる', () => {
+		const items = sortMenuItems('size', 'desc');
+		expect(items.at(-1)).toStrictEqual({
+			id: 'size',
+			label: 'ファイルサイズ(降順)',
+			checked: true,
+		});
 	});
 });
