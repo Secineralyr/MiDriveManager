@@ -1,10 +1,13 @@
 <script lang="ts">
 	import type { FileRecord } from '../../lib/db/schema';
 	import FileTypeIcon from '$components/molecules/FileTypeIcon.svelte';
+	import IconChevronLeft from '@tabler/icons-svelte/icons/chevron-left';
+	import IconChevronRight from '@tabler/icons-svelte/icons/chevron-right';
 	import IconDownload from '@tabler/icons-svelte/icons/download';
 	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
 	import IconX from '@tabler/icons-svelte/icons/x';
 	import Spinner from '$components/atoms/Spinner.svelte';
+	import { adjacentFiles } from '../../lib/utils/preview-nav';
 	import { createDialogCloser } from '../../lib/utils/dialog-close.svelte';
 	import { fileKind } from '../../lib/utils/file-kind';
 	import { formatFileSize } from '../../lib/utils/format';
@@ -19,9 +22,13 @@
 		ondownload?: (file: FileRecord) => void;
 		/** 詳細を開く操作(指定した場合だけボタンを表示する) */
 		ondetails?: (file: FileRecord) => void;
+		/** 隣接ファイルへの移動に使う表示順の一覧(未指定なら移動ボタンを出さない。スマートフォンでは画面が足りないため渡さない) */
+		files?: FileRecord[];
+		/** 隣接ファイルへ表示を切り替える操作 */
+		onnavigate?: (file: FileRecord) => void;
 	};
 
-	let { file, onclose, ondownload, ondetails }: Props = $props();
+	let { file, onclose, ondownload, ondetails, files, onnavigate }: Props = $props();
 
 	let dialog = $state<HTMLDialogElement | null>(null);
 	let mediaLoading = $state(false);
@@ -37,6 +44,28 @@
 	});
 
 	const kind = $derived(displayed === null ? 'other' : fileKind(displayed.type));
+
+	const adjacent = $derived(
+		displayed === null || files === undefined
+			? { prev: null, next: null }
+			: adjacentFiles(files, displayed.id),
+	);
+
+	const navigable = $derived(files !== undefined && onnavigate !== undefined);
+
+	/**
+	 * 左右キーで隣のファイルへ移動する
+	 * @param event - キーボードイベント
+	 */
+	const handleKeydown = (event: KeyboardEvent) => {
+		if (event.key === 'ArrowLeft' && adjacent.prev !== null) {
+			onnavigate?.(adjacent.prev);
+		}
+
+		if (event.key === 'ArrowRight' && adjacent.next !== null) {
+			onnavigate?.(adjacent.next);
+		}
+	};
 
 	$effect(() => {
 		// 表示するファイルが変わったら読み込み表示をやり直す
@@ -92,6 +121,7 @@
 	onclose={handleClose}
 	oncancel={handleCancelEvent}
 	onclick={handleDialogClick}
+	onkeydown={handleKeydown}
 >
 	{#if displayed !== null}
 		{@const shown = displayed}
@@ -132,6 +162,7 @@
 					<span>読み込んでいます</span>
 				</span>
 			{/if}
+			{#key shown.id}
 			{#if kind === 'image'}
 				<img
 					bind:this={image}
@@ -164,7 +195,36 @@
 					<span>このファイルはプレビューできません</span>
 				</p>
 			{/if}
+			{/key}
 		</div>
+		{#if navigable}
+			<button
+				type="button"
+				data-nav="prev"
+				aria-label="前のファイル"
+				disabled={adjacent.prev === null}
+				onclick={() => {
+					if (adjacent.prev !== null) {
+						onnavigate?.(adjacent.prev);
+					}
+				}}
+			>
+				<IconChevronLeft size={25} />
+			</button>
+			<button
+				type="button"
+				data-nav="next"
+				aria-label="次のファイル"
+				disabled={adjacent.next === null}
+				onclick={() => {
+					if (adjacent.next !== null) {
+						onnavigate?.(adjacent.next);
+					}
+				}}
+			>
+				<IconChevronRight size={25} />
+			</button>
+		{/if}
 	{/if}
 </dialog>
 
@@ -316,6 +376,48 @@
 		margin: 0;
 		gap: 10px;
 		color: hsl(0 0% 65%);
+	}
+
+	/* 隣ファイルへ移動するボタン */
+	[data-nav] {
+		display: inline-flex;
+		position: absolute;
+		top: 50%;
+		z-index: 1;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		border-radius: 9999px;
+		padding: 10px;
+		background-color: hsl(0 0% 100% / 0.1);
+		color: hsl(0 0% 95%);
+		cursor: pointer;
+		transform: translateY(-50%);
+		transition:
+			background-color 250ms ease,
+			opacity 250ms ease;
+	}
+
+	[data-nav]:enabled:hover {
+		background-color: hsl(0 0% 100% / 0.2);
+	}
+
+	[data-nav]:focus-visible {
+		outline: 2px solid var(--color-focus);
+		outline-offset: 2px;
+	}
+
+	[data-nav]:disabled {
+		opacity: 0.25;
+		cursor: default;
+	}
+
+	[data-nav='prev'] {
+		left: 15px;
+	}
+
+	[data-nav='next'] {
+		right: 15px;
 	}
 
 	/* 読み込み中の表示 */

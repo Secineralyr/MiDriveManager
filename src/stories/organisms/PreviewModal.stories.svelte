@@ -43,6 +43,21 @@
 />
 
 <Story
+	name="画像(隣接ナビゲーション)"
+	args={{
+		file: makeFile({ name: 'がぞー.png', mimeType: 'image/png' }),
+		files: [
+			{ ...makeFile({ name: 'まえ.png', mimeType: 'image/png' }), id: 'f0' },
+			makeFile({ name: 'がぞー.png', mimeType: 'image/png' }),
+			{ ...makeFile({ name: 'つぎ.png', mimeType: 'image/png' }), id: 'f2' },
+		],
+		onnavigate: () => {},
+		onclose: () => {},
+		ondownload: () => {},
+	}}
+/>
+
+<Story
 	name="プレビュー不可"
 	args={{ file: makeFile({ name: 'archive.zip', mimeType: 'application/zip' }), onclose: () => {} }}
 />

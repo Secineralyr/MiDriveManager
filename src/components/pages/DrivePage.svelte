@@ -429,11 +429,11 @@
 
 <PreviewModal
 	file={previewFile}
+	files={phone ? undefined : visibleFiles}
+	onnavigate={(file) => (previewFile = file)}
 	onclose={() => {
 		previewFile = null;
 	}}
-	ondownload={(file) => {
-		driveTasks.download(account, [{ kind: 'file', id: file.id }]);
-	}}
+	ondownload={(file) => driveTasks.download(account, [{ kind: 'file', id: file.id }])}
 	ondetails={phone ? handlePreviewDetails : undefined}
 />
