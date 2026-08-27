@@ -18,7 +18,7 @@ type MovePlan = {
 	folderIds: string[];
 	/** 移動先のフォルダID(ルートはnull) */
 	targetFolderId: string | null;
-	/** 進捗通知。ファイルはまとめて1件分、フォルダは1件ずつ数える */
+	/** 進捗通知。ファイル・フォルダとも1件ずつ数える(move-bulk成功時はファイル分をまとめて進める) */
 	onProgress?: ProgressCallback;
 };
 
@@ -45,21 +45,24 @@ const planMove = (input: {
 });
 
 /**
- * 計画の全件数(ファイルはまとめて1件分)を返す
+ * 計画の全件数(ファイルとフォルダの合計)を返す
  * @param plan - 移動の実行計画
  * @returns 全件数
  */
-const planTotal = (plan: MovePlan) => (plan.fileIds.length > 0 ? 1 : 0) + plan.folderIds.length;
+const planTotal = (plan: MovePlan) => plan.fileIds.length + plan.folderIds.length;
 
 /**
  * ファイルを1件ずつ移動する(drive/files/move-bulkがない古いMisskey向けのフォールバック)
+ * updateを1回打つごとに進捗を通知する
  * @param client - APIクライアント
  * @param plan - 移動の実行計画
  */
 const moveFilesOneByOne = async (client: ActionsClient, plan: MovePlan) => {
-	for (const fileId of plan.fileIds) {
+	const total = planTotal(plan);
+	for (const [index, fileId] of plan.fileIds.entries()) {
 		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
 		await client.driveFilesUpdate({ fileId, folderId: plan.targetFolderId });
+		plan.onProgress?.(index + 1, total);
 	}
 };
 
@@ -73,6 +76,7 @@ const moveFilesOneByOne = async (client: ActionsClient, plan: MovePlan) => {
 const moveFilesBulk = async (accountId: string, client: ActionsClient, plan: MovePlan) => {
 	try {
 		await client.driveFilesMoveBulk({ fileIds: plan.fileIds, folderId: plan.targetFolderId });
+		plan.onProgress?.(plan.fileIds.length, planTotal(plan));
 	} catch {
 		await moveFilesOneByOne(client, plan);
 	}
@@ -91,7 +95,7 @@ const moveFoldersSequentially = async (
 	client: ActionsClient,
 	plan: MovePlan,
 ) => {
-	const offset = plan.fileIds.length > 0 ? 1 : 0;
+	const offset = plan.fileIds.length;
 	const total = planTotal(plan);
 	for (const [index, folderId] of plan.folderIds.entries()) {
 		// oxlint-disable-next-line eslint/no-await-in-loop - レート制御のため逐次実行
@@ -158,7 +162,7 @@ export const moveItems = async (
 		items: DriveItem[];
 		/** 移動先のフォルダID(ルートはnull) */
 		targetFolderId: string | null;
-		/** 進捗通知(完了件数, 全件数)。ファイルはまとめて1件分、フォルダは1件ずつ数える */
+		/** 進捗通知(完了件数, 全件数)。ファイル・フォルダとも1件ずつ数える */
 		onProgress?: ProgressCallback;
 	},
 ) => {
@@ -169,7 +173,6 @@ export const moveItems = async (
 	try {
 		if (plan.fileIds.length > 0) {
 			await moveFilesBulk(accountId, client, plan);
-			plan.onProgress?.(1, total);
 		}
 
 		await moveFoldersSequentially(accountId, client, plan);

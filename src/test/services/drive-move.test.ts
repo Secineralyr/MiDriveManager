@@ -72,6 +72,25 @@ const makeMoveClient = () => {
 	return { client, moveBulk, folderUpdate, fileUpdate };
 };
 
+/**
+ * ファイル2件+フォルダ1件の移動を進捗つきで実行する
+ * @param client - APIクライアント
+ * @returns 進捗通知のモック
+ */
+const moveThreeItems = async (client: ActionsClient) => {
+	const onProgress = vi.fn<(done: number, total: number) => void>();
+	await moveItems('a1', client, {
+		items: [
+			{ kind: 'file', id: 'f1' },
+			{ kind: 'file', id: 'f2' },
+			{ kind: 'folder', id: 'd1' },
+		],
+		targetFolderId: 'target',
+		onProgress,
+	});
+	return onProgress;
+};
+
 /** テストごとにIndexedDBを初期化してサンプルデータを投入する */
 const seed = async () => {
 	await closeDatabase();
@@ -137,6 +156,34 @@ describe('move-bulk非対応のフォールバック', () => {
 		const db = await openDatabase();
 		const moved = await db.get('files', ['a1', 'f2']);
 		expect(moved?.folderKey).toBe('target');
+	});
+});
+
+describe('移動の進捗', () => {
+	beforeEach(seed);
+
+	it('move-bulk成功時はファイル分をまとめて進めた進捗が通知される', async () => {
+		const { client } = makeMoveClient();
+		const onProgress = await moveThreeItems(client);
+		expect(onProgress.mock.calls).toStrictEqual([
+			[0, 3],
+			[2, 3],
+			[3, 3],
+		]);
+	});
+
+	it('フォールバック時はupdateを打つごとに進捗が1件ずつ通知される', async () => {
+		const { client, moveBulk } = makeMoveClient();
+		moveBulk.mockRejectedValue(
+			Object.assign(new Error('no such endpoint'), { code: 'NO_SUCH_ENDPOINT' }),
+		);
+		const onProgress = await moveThreeItems(client);
+		expect(onProgress.mock.calls).toStrictEqual([
+			[0, 3],
+			[1, 3],
+			[2, 3],
+			[3, 3],
+		]);
 	});
 });
 
