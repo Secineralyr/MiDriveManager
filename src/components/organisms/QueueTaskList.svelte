@@ -39,6 +39,32 @@
 
 	let { tasks, onretry, ondismiss }: Props = $props();
 
+	let list = $state<HTMLUListElement | null>(null);
+
+	let lastScrolledId: number | null = null;
+
+	const scrollTargetId = $derived.by(() => {
+		const running = tasks.find((task) => task.status === 'running');
+		if (running !== undefined) {
+			return running.id;
+		}
+
+		return tasks.at(-1)?.id ?? null;
+	});
+
+	// 対象が変わったらその行が見える位置へスクロールする
+	$effect(() => {
+		if (scrollTargetId === null || scrollTargetId === lastScrolledId) {
+			return;
+		}
+
+		lastScrolledId = scrollTargetId;
+		const row = list?.querySelector(`[data-task-id="${scrollTargetId}"]`);
+		if (row !== null && row !== undefined && typeof row.scrollIntoView === 'function') {
+			row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+		}
+	});
+
 	/**
 	 * タスクの状態を表す文言を返す
 	 * @param task - 対象のタスク
@@ -76,9 +102,9 @@
 	};
 </script>
 
-<ul>
+<ul bind:this={list}>
 	{#each tasks as task (task.id)}
-		<li data-status={task.status}>
+		<li data-status={task.status} data-task-id={task.id}>
 			<span>
 				{#if task.status === 'running'}
 					<Spinner size={16} />

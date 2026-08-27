@@ -65,7 +65,7 @@ export const makeMoveRun =
 		const { account, items, targetFolderId, clientFactory } = input;
 		const remaining = await selectItemsToMove(account.id, items, targetFolderId);
 		const offset = items.length - remaining.length;
-		
+
 		await moveItems(account.id, clientFactory(account.host, account.token), {
 			items: remaining,
 			targetFolderId,

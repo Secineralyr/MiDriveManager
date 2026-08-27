@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import type { AccountRecord } from '../../../lib/db/schema';
 import QueuePanel from '$components/organisms/QueuePanel.svelte';
@@ -50,6 +50,16 @@ const enqueueRunningUpload = () => {
 		},
 	});
 	return gate;
+};
+
+/**
+ * jsdomに無いscrollIntoViewをモックで差し込む
+ * @returns 呼び出しを記録するモック
+ */
+const stubScrollIntoView = () => {
+	const scrollIntoView = vi.fn<Element['scrollIntoView']>();
+	Element.prototype.scrollIntoView = scrollIntoView;
+	return scrollIntoView;
 };
 
 /** テストごとに完了済みのタスクを消し、トランジション用のanimateを差し込む */
@@ -111,5 +121,28 @@ describe('進行カードの操作', () => {
 		await fireEvent.click(screen.getByRole('button', { name: '完了した操作を消す' }));
 		await tick();
 		expect(container.querySelector('section')).toBeNull();
+	});
+});
+
+describe('進行カードの自動スクロール', () => {
+	beforeEach(reset);
+
+	it('履歴がある状態で新しいタスクが積まれると、その行へスクロールされる', async () => {
+		const scrollIntoView = stubScrollIntoView();
+		queueStore.enqueue({
+			account,
+			kind: 'move',
+			label: '1件の移動',
+			run: () => Promise.resolve(),
+		});
+		await queueStore.whenIdle();
+		render(QueuePanel);
+		await tick();
+		scrollIntoView.mockClear();
+
+		const gate = enqueueRunningUpload();
+		await tick();
+		expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' });
+		gate.resolve();
 	});
 });
