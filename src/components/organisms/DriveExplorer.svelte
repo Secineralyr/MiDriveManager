@@ -61,6 +61,19 @@
 		onpreviewfile: (file: FileRecord) => void;
 		/** フォルダ作成開始時の処理 */
 		oncreatefolder: () => void;
+		/** ツリーメニューからのフォルダ名変更 */
+		onrenamefolder?: (folder: FolderRecord) => void;
+		/** ツリーメニューからのフォルダ移動 */
+		onmovefolder?: (folder: FolderRecord) => void;
+		/** ツリーのフォルダのドラッグ開始(選択とは独立した単体ドラッグ) */
+		ondragstartfolder?: (folderId: string) => void;
+		/** ドラッグ移動時にメニューを閉じる制御への登録(ツリーのメニュー用) */
+		onregistermenucloser?: (closer: {
+			/** メニューが開いているかどうか */
+			isOpen: () => boolean;
+			/** メニューを閉じる */
+			close: () => void;
+		}) => void;
 		/** ツリーのフォルダメニューからの新規フォルダ作成(対象の親フォルダIDを渡す) */
 		oncreatefolderat?: (parentId: string | null) => void;
 		/** 名前の変更を開始する操作 */
@@ -130,6 +143,10 @@
 		onpreviewfile,
 		oncreatefolder,
 		oncreatefolderat,
+		onrenamefolder,
+		onmovefolder,
+		ondragstartfolder,
+		onregistermenucloser,
 		onrename,
 		onsavemetadata,
 		ondeleteselection,
@@ -241,6 +258,11 @@
 		{ondropitems}
 		{ondropfiles}
 		{oncreatefolderat}
+		{onrenamefolder}
+		{onmovefolder}
+		{ondragstartfolder}
+		ondragendfolder={ondragenditem}
+		{onregistermenucloser}
 		{phone}
 		onclose={() => {
 			treeOpen = false;

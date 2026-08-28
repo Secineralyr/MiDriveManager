@@ -73,5 +73,7 @@
 		currentFolderId: null,
 		onnavigate: () => {},
 		oncreatefolderat: () => {},
+		onrenamefolder: () => {},
+		onmovefolder: () => {},
 	}}
 />

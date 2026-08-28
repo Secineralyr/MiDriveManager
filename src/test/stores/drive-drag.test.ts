@@ -78,3 +78,58 @@ describe('ドラッグでの移動', () => {
 		expect(record.menuClosed).toBe(0);
 	});
 });
+
+describe('選択と独立した単体ドラッグ(ツリーのフォルダ)', () => {
+	it('開始時に選択へ触れず、ドロップでそのフォルダだけの移動を積み、選択も解除しない', () => {
+		const { drag, record } = createDragFixture();
+		drag.startDetached('folder', 'd9');
+		drag.drop('d1');
+		expect(record.selected).toStrictEqual([]);
+		expect(record.moved).toStrictEqual([{ targetFolderId: 'd1', count: 1 }]);
+		expect(record.cleared).toBe(0);
+	});
+
+	it('単体ドラッグの後の通常ドラッグでは、従来どおり選択の解除が行われる', () => {
+		const { drag, record } = createDragFixture();
+		drag.startDetached('folder', 'd9');
+		drag.drop('d1');
+		drag.startItem('file', 'f1');
+		drag.drop('d2');
+		expect(record.cleared).toBe(1);
+	});
+});
+
+describe('登録したメニューの連動', () => {
+	it('登録したメニューも、ドラッグが大きく動いた時に一緒に閉じられる', () => {
+		const { drag, record } = createDragFixture();
+		let extraClosed = 0;
+		let extraOpen = true;
+		drag.registerMenu({
+			isOpen: () => extraOpen,
+			close: () => {
+				extraClosed += 1;
+				extraOpen = false;
+			},
+		});
+		drag.startDetached('folder', 'd9');
+		drag.beginTrack({ clientX: 100, clientY: 100 });
+		drag.track({ clientX: 200, clientY: 100 });
+		expect(extraClosed).toBe(1);
+		expect(record.menuClosed).toBe(1);
+	});
+
+	it('小さな動きでは登録したメニューを閉じない', () => {
+		const { drag } = createDragFixture();
+		let extraClosed = 0;
+		drag.registerMenu({
+			isOpen: () => true,
+			close: () => {
+				extraClosed += 1;
+			},
+		});
+		drag.startDetached('folder', 'd9');
+		drag.beginTrack({ clientX: 100, clientY: 100 });
+		drag.track({ clientX: 120, clientY: 110 });
+		expect(extraClosed).toBe(0);
+	});
+});

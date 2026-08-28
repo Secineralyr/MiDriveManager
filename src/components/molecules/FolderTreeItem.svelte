@@ -28,6 +28,10 @@
 		depth?: number;
 		/** これより深い階層はインデントを増やさない(タブレット・スマートフォンで幅が尽きないように) */
 		maxIndentDepth?: number;
+		/** フォルダのドラッグ開始(指定した場合だけ行をドラッグできる) */
+		ondragstartfolder?: (folderId: string) => void;
+		/** フォルダのドラッグ終了 */
+		ondragendfolder?: () => void;
 		/** 右クリック(長押し)でフォルダのメニューを開く操作(指定した場合だけ受け付ける) */
 		onopenmenu?: (folderId: string, position: {
 			/** ビューポート基準のx座標 */
@@ -48,6 +52,8 @@
 		ondropfiles,
 		depth = 1,
 		maxIndentDepth = 6,
+		ondragstartfolder,
+		ondragendfolder,
 		onopenmenu,
 	}: Props = $props();
 
@@ -67,6 +73,24 @@
 	};
 
 	let dropover = $state(false);
+
+	/**
+	 * フォルダのドラッグ開始を通知する
+	 * @param event - ドラッグイベント
+	 */
+	const handleDragStart = (event: DragEvent) => {
+		if (event.dataTransfer !== null) {
+			event.dataTransfer.setData('text/plain', folder.name);
+			event.dataTransfer.effectAllowed = 'move';
+		}
+
+		ondragstartfolder?.(folder.id);
+	};
+
+	/** フォルダのドラッグ終了を通知する */
+	const handleDragEnd = () => {
+		ondragendfolder?.();
+	};
 
 	/**
 	 * 受け入れられる種類のドロップなら受け入れを表明して強調する
@@ -106,6 +130,9 @@
 		role="group"
 		data-current={currentFolderId === folder.id}
 		data-dropover={dropover}
+		draggable={ondragstartfolder !== undefined}
+		ondragstart={handleDragStart}
+		ondragend={handleDragEnd}
 		ondragover={handleDragOver}
 		ondragleave={handleDragLeave}
 		ondrop={handleDrop}
@@ -154,6 +181,8 @@
 					{ondropfiles}
 					depth={depth + 1}
 					{maxIndentDepth}
+					{ondragstartfolder}
+					{ondragendfolder}
 					{onopenmenu}
 				/>
 			{/each}

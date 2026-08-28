@@ -1,5 +1,5 @@
+import { makeSelectionKey, parseSelectionKey } from './selection.svelte';
 import type { DriveItem } from '../services/drive-actions';
-import { parseSelectionKey } from './selection.svelte';
 
 // ドラッグでメニューを閉じるまでの移動量(px)
 const DRAG_MENU_CLOSE_PX = 30;
@@ -12,12 +12,24 @@ type DragPointLike = {
 	readonly clientY: number;
 };
 
+/** ドラッグ移動時に一緒に閉じるメニューの制御 */
+type MenuCloserShape = {
+	/** メニューが開いているかどうか */
+	isOpen: () => boolean;
+	/** メニューを閉じる */
+	close: () => void;
+};
+
 /** ドラッグの内部状態 */
 type DragState = {
 	/** ドラッグ中の選択キー(ドラッグしていなければ空) */
 	keys: string[];
 	/** ドラッグの開始位置(記録していなければnull) */
 	origin: DragPointLike | null;
+	/** 選択と独立した単体ドラッグかどうか(ツリーのフォルダなど。ドロップ後に選択へ触れない) */
+	detached: boolean;
+	/** 追加で一緒に閉じるメニュー(ツリーのメニューなど。未登録ならnull) */
+	extraMenu: MenuCloserShape | null;
 };
 
 /** ドラッグ処理がページから受け取る文脈 */
@@ -43,7 +55,8 @@ type DriveDragContext = {
  * @param event - ドラッグ位置
  */
 const trackDrag = (state: DragState, context: DriveDragContext, event: DragPointLike) => {
-	if (state.origin === null || !context.isMenuOpen()) {
+	const menuOpen = context.isMenuOpen() || (state.extraMenu?.isOpen() ?? false);
+	if (state.origin === null || !menuOpen) {
 		return;
 	}
 
@@ -52,6 +65,7 @@ const trackDrag = (state: DragState, context: DriveDragContext, event: DragPoint
 		Math.abs(event.clientY - state.origin.clientY) > DRAG_MENU_CLOSE_PX;
 	if (moved) {
 		context.closeMenu();
+		state.extraMenu?.close();
 	}
 };
 
@@ -63,14 +77,50 @@ const trackDrag = (state: DragState, context: DriveDragContext, event: DragPoint
  */
 const dropDrag = (state: DragState, context: DriveDragContext, targetFolderId: string | null) => {
 	const items = state.keys.map((key) => parseSelectionKey(key));
+	const { detached } = state;
+
 	state.keys = [];
+	state.detached = false;
+
 	if (items.length === 0) {
 		return;
 	}
 
 	context.moveItems(items, targetFolderId);
-	context.clearSelection();
+	if (!detached) {
+		context.clearSelection();
+	}
 };
+
+/**
+ * ドラッグ開始系の操作を作る
+ * @param state - 内部状態
+ * @param context - ページから受け取る文脈
+ * @returns ドラッグ開始の各処理
+ */
+const makeStarters = (state: DragState, context: DriveDragContext) => ({
+	/**
+	 * 項目のドラッグ開始(未選択の項目はその項目だけを選択してから開始する)
+	 * @param kind - 項目の種別
+	 * @param id - 項目のID
+	 */
+	startItem(kind: 'file' | 'folder', id: string) {
+		context.selectItem(kind, id);
+		state.keys = [...context.selectedKeys()];
+		state.detached = false;
+	},
+
+	/**
+	 * 選択と独立した単体ドラッグを開始する(ツリーのフォルダなど)
+	 * 選択には触れず、ドロップ後の選択解除も行わない
+	 * @param kind - 項目の種別
+	 * @param id - 項目のID
+	 */
+	startDetached(kind: 'file' | 'folder', id: string) {
+		state.keys = [makeSelectionKey(kind, id)];
+		state.detached = true;
+	},
+});
 
 /**
  * 項目のドラッグでの移動処理を作る
@@ -79,23 +129,24 @@ const dropDrag = (state: DragState, context: DriveDragContext, targetFolderId: s
  * @returns ドラッグの各イベント処理
  */
 export const createDriveDrag = (context: DriveDragContext) => {
-	const state: DragState = { keys: [], origin: null };
+	const state: DragState = { keys: [], origin: null, detached: false, extraMenu: null };
 
 	return {
+		...makeStarters(state, context),
+
 		/**
-		 * 項目のドラッグ開始(未選択の項目はその項目だけを選択してから開始する)
-		 * @param kind - 項目の種別
-		 * @param id - 項目のID
+		 * ドラッグ移動時に一緒に閉じるメニューを登録する(登録は1つで、再登録は置き換え)
+		 * @param closer - メニューの制御
 		 */
-		startItem(kind: 'file' | 'folder', id: string) {
-			context.selectItem(kind, id);
-			state.keys = [...context.selectedKeys()];
+		registerMenu(closer: MenuCloserShape) {
+			state.extraMenu = closer;
 		},
 
 		/** ドラッグの終了(ドロップされなかった場合の後始末) */
 		end() {
 			state.keys = [];
 			state.origin = null;
+			state.detached = false;
 		},
 
 		/**
@@ -124,3 +175,6 @@ export const createDriveDrag = (context: DriveDragContext) => {
 		},
 	};
 };
+
+/** ドラッグ移動時に一緒に閉じるメニューの制御 */
+export type MenuCloser = MenuCloserShape;

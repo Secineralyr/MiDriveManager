@@ -21,6 +21,21 @@
 		onclose?: () => void;
 		/** フォルダの右クリック(長押し)メニューからの新規フォルダ作成(FolderTreeへ中継) */
 		oncreatefolderat?: (parentId: string | null) => void;
+		/** メニューからのフォルダ名変更(FolderTreeへ中継) */
+		onrenamefolder?: (folder: FolderRecord) => void;
+		/** メニューからのフォルダ移動(FolderTreeへ中継) */
+		onmovefolder?: (folder: FolderRecord) => void;
+		/** フォルダのドラッグ開始(FolderTreeへ中継) */
+		ondragstartfolder?: (folderId: string) => void;
+		/** フォルダのドラッグ終了(FolderTreeへ中継) */
+		ondragendfolder?: () => void;
+		/** ドラッグ移動時にメニューを閉じる制御への登録(FolderTreeへ中継) */
+		onregistermenucloser?: (closer: {
+			/** メニューが開いているかどうか */
+			isOpen: () => boolean;
+			/** メニューを閉じる */
+			close: () => void;
+		}) => void;
 		/** スマートフォン表示かどうか(メニューをシートにする) */
 		phone?: boolean;
 	};
@@ -34,6 +49,11 @@
 		ondropfiles,
 		onclose,
 		oncreatefolderat,
+		onrenamefolder,
+		onmovefolder,
+		ondragstartfolder,
+		ondragendfolder,
+		onregistermenucloser,
 		phone = false,
 	}: Props = $props();
 
@@ -80,6 +100,11 @@
 		{ondropitems}
 		{ondropfiles}
 		{oncreatefolderat}
+		{onrenamefolder}
+		{onmovefolder}
+		{ondragstartfolder}
+		{ondragendfolder}
+		{onregistermenucloser}
 		{phone}
 	/>
 </aside>

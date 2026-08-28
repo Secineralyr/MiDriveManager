@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { AccountRecord } from '../../lib/db/schema';
+	import type { AccountRecord, FolderRecord } from '../../lib/db/schema';
 	import ConfirmDialog from '$components/molecules/ConfirmDialog.svelte';
 	import type { DriveItem } from '../../lib/services/drive-actions';
+	import MoveSheet from '$components/organisms/MoveSheet.svelte';
 	import PromptDialog from '$components/molecules/PromptDialog.svelte';
 	import { driveActionsStore } from '../../lib/stores/drive-actions.svelte';
 	
@@ -31,6 +32,14 @@
 		clearCount?: number;
 		/** 選択解除の確認で解除が確定した時の処理 */
 		onclearselection?: () => void;
+		/** ツリーメニューから名前を変更するフォルダ(バインド可能。nullなら閉じる) */
+		renameFolder?: FolderRecord | null;
+		/** ツリーメニューから移動するフォルダ(バインド可能。nullなら閉じる) */
+		moveFolder?: FolderRecord | null;
+		/** 親キーごとの子フォルダ一覧(フォルダ移動の移動先ツリー用) */
+		childrenMap?: Record<string, FolderRecord[]>;
+		/** スマートフォン表示かどうか(フォルダ移動をシートにする) */
+		phone?: boolean;
 	};
 
 	let {
@@ -45,6 +54,10 @@
 		clearConfirmOpen = $bindable(false),
 		clearCount = 0,
 		onclearselection,
+		renameFolder = $bindable(null),
+		moveFolder = $bindable(null),
+		childrenMap = {},
+		phone = false,
 	}: Props = $props();
 
 	/** すべての操作ダイアログを閉じる */
@@ -86,6 +99,37 @@
 		onclearselection?.();
 	};
 
+	/**
+	 * ツリーメニューからのフォルダ名変更を確定する
+	 * @param name - 新しい名前
+	 */
+	const handleRenameFolder = async (name: string) => {
+		if (renameFolder === null) {
+			return;
+		}
+
+		await driveActionsStore.rename(account, {
+			item: { kind: 'folder', id: renameFolder.id },
+			name,
+		});
+		renameFolder = null;
+	};
+
+	/**
+	 * ツリーメニューからのフォルダ移動を確定する
+	 * @param targetFolderId - 移動先のフォルダID(ルートはnull)
+	 */
+	const handleMoveFolder = (targetFolderId: string | null) => {
+		if (moveFolder !== null) {
+			const _ = driveTasks.moveItems(account, {
+				items: [{ kind: 'folder', id: moveFolder.id }],
+				targetFolderId,
+			});
+		}
+
+		moveFolder = null;
+	};
+
 	/** 削除を確定する(操作キューへ積み、選択は解除する) */
 	const handleDelete = () => {
 		driveTasks.deleteItems(account, deleteTargets);
@@ -122,6 +166,27 @@
 	danger
 	onconfirm={handleDelete}
 	oncancel={closeAll}
+/>
+
+<PromptDialog
+	open={renameFolder !== null}
+	title="名前の変更"
+	label="新しい名前"
+	initialValue={renameFolder?.name ?? ''}
+	confirmLabel="変更"
+	busy={driveActionsStore.busy}
+	onconfirm={handleRenameFolder}
+	oncancel={() => (renameFolder = null)}
+/>
+
+<MoveSheet
+	open={moveFolder !== null}
+	{childrenMap}
+	currentFolderId={moveFolder?.parentId ?? null}
+	items={moveFolder === null ? [] : [{ kind: 'folder', id: moveFolder.id }]}
+	onclose={() => (moveFolder = null)}
+	onmove={handleMoveFolder}
+	variant={phone ? 'sheet' : 'dialog'}
 />
 
 <ConfirmDialog

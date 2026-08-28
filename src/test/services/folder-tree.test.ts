@@ -1,4 +1,9 @@
-import { ancestorIds, buildChildrenMap, folderPath } from '../../lib/services/folder-tree';
+import {
+	ancestorIds,
+	buildChildrenMap,
+	findFolder,
+	folderPath,
+} from '../../lib/services/folder-tree';
 import { describe, expect, it } from 'vitest';
 import type { FolderRecord } from '../../lib/db/schema';
 
@@ -86,5 +91,18 @@ describe('祖先フォルダIDの列挙', () => {
 	it('親が循環していても無限ループしない', () => {
 		const loop = buildChildrenMap([makeFolder('p', 'P', 'q'), makeFolder('q', 'Q', 'p')]);
 		expect(ancestorIds(loop, 'p')).toStrictEqual(['p', 'q']);
+	});
+});
+
+describe('フォルダの検索', () => {
+	const map = buildChildrenMap([makeFolder('a', 'A', null), makeFolder('b', 'B', 'a')]);
+
+	it('索引のどの階層にあってもIDでフォルダが見つかる', () => {
+		expect(findFolder(map, 'a')?.name).toBe('A');
+		expect(findFolder(map, 'b')?.name).toBe('B');
+	});
+
+	it('存在しないIDはnullになる', () => {
+		expect(findFolder(map, 'nope')).toBeNull();
 	});
 });

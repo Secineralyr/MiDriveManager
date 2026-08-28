@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { acceptDragOver, dispatchDrop } from '../../lib/utils/drop-target';
+	import { ancestorIds, findFolder } from '../../lib/services/folder-tree';
 	import { tick, untrack } from 'svelte';
 	import ActionSheet from '$components/molecules/ActionSheet.svelte';
 	import ContextMenu from '$components/molecules/ContextMenu.svelte';
@@ -7,7 +8,8 @@
 	import FolderTreeItem from '$components/molecules/FolderTreeItem.svelte';
 	import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
 	import IconFolderPlus from '@tabler/icons-svelte/icons/folder-plus';
-	import { ancestorIds } from '../../lib/services/folder-tree';
+	import IconFolderSymlink from '@tabler/icons-svelte/icons/folder-symlink';
+	import IconPencil from '@tabler/icons-svelte/icons/pencil';
 	import { longPress } from '../../lib/utils/long-press';
 
 	type Props = {
@@ -27,6 +29,21 @@
 		maxIndentDepth?: number;
 		/** フォルダの右クリック(長押し)メニューからの新規フォルダ作成(指定した場合だけメニューを出す) */
 		oncreatefolderat?: (parentId: string | null) => void;
+		/** メニューからのフォルダ名変更(ルート以外で表示) */
+		onrenamefolder?: (folder: FolderRecord) => void;
+		/** メニューからのフォルダ移動(ルート以外で表示) */
+		onmovefolder?: (folder: FolderRecord) => void;
+		/** フォルダのドラッグ開始(指定した場合だけ行をドラッグできる) */
+		ondragstartfolder?: (folderId: string) => void;
+		/** フォルダのドラッグ終了 */
+		ondragendfolder?: () => void;
+		/** ドラッグ移動時にメニューを閉じる制御へ、ツリーのメニューを登録する */
+		onregistermenucloser?: (closer: {
+			/** メニューが開いているかどうか */
+			isOpen: () => boolean;
+			/** メニューを閉じる */
+			close: () => void;
+		}) => void;
 		/** スマートフォン表示かどうか(メニューを下から出るシートにする) */
 		phone?: boolean;
 	};
@@ -40,8 +57,21 @@
 		expandOnSelect = false,
 		maxIndentDepth = 6,
 		oncreatefolderat,
+		onrenamefolder,
+		onmovefolder,
+		ondragstartfolder,
+		ondragendfolder,
+		onregistermenucloser,
 		phone = false,
 	}: Props = $props();
+
+	// ドラッグが動いた時にツリーのメニューを閉じる
+	$effect(() => {
+		onregistermenucloser?.({
+			isOpen: () => menuTarget !== null,
+			close: () => (menuTarget = null),
+		});
+	});
 
 	let menuTarget = $state<{
 		/** 対象のフォルダID(ルートはnull) */
@@ -74,23 +104,57 @@
 			return 'ルート';
 		}
 
-		const targetId = menuTarget.folderId;
-		for (const bucket of Object.values(childrenMap)) {
-			const hit = bucket.find((folder) => folder.id === targetId);
-			if (hit !== undefined) {
-				return hit.name;
-			}
-		}
-
-		return 'フォルダ';
+		return findFolder(childrenMap, menuTarget.folderId)?.name ?? 'フォルダ';
 	});
 
-	const MENU_ITEMS = [{ id: 'create', label: '新しいフォルダ', icon: IconFolderPlus }];
+	const menuItems = $derived.by(() => {
+		const base = [{ id: 'create', label: '新しいフォルダ', icon: IconFolderPlus }];
+		if (menuTarget === null || menuTarget.folderId === null) {
+			return base;
+		}
 
-	/** メニューで選ばれた操作を実行する(現状は新規フォルダ作成のみ) */
-	const handleMenuSelect = () => {
-		if (menuTarget !== null) {
+		return [
+			...base,
+			{ id: 'rename', label: '名前を変更', icon: IconPencil },
+			{ id: 'move', label: '移動', icon: IconFolderSymlink },
+		];
+	});
+
+	/**
+	 * フォルダ対象の操作(名前の変更・移動)を実行する
+	 * @param id - 選ばれた操作
+	 * @param folderId - 対象のフォルダID
+	 */
+	const runFolderAction = (id: string, folderId: string) => {
+		const target = findFolder(childrenMap, folderId);
+		if (target === null) {
+			return;
+		}
+
+		if (id === 'rename') {
+			onrenamefolder?.(target);
+			return;
+		}
+
+		onmovefolder?.(target);
+	};
+
+	/**
+	 * メニューで選ばれた操作を実行する
+	 * @param id - 選ばれた操作
+	 */
+	const handleMenuSelect = (id: string) => {
+		if (menuTarget === null) {
+			return;
+		}
+
+		if (id === 'create') {
 			oncreatefolderat?.(menuTarget.folderId);
+			return;
+		}
+
+		if (menuTarget.folderId !== null) {
+			runFolderAction(id, menuTarget.folderId);
 		}
 	};
 
@@ -247,6 +311,8 @@
 							{ondropfiles}
 							{maxIndentDepth}
 							onopenmenu={oncreatefolderat === undefined ? undefined : handleOpenMenu}
+							{ondragstartfolder}
+							{ondragendfolder}
 						/>
 					{/each}
 				</ul>
@@ -260,7 +326,7 @@
 		<ActionSheet
 			open={menuTarget !== null}
 			title={menuTitle}
-			items={MENU_ITEMS}
+			items={menuItems}
 			onselect={handleMenuSelect}
 			onclose={() => {
 				menuTarget = null;
@@ -271,7 +337,7 @@
 			open={menuTarget !== null}
 			x={menuTarget?.x ?? 0}
 			y={menuTarget?.y ?? 0}
-			items={MENU_ITEMS}
+			items={menuItems}
 			onselect={handleMenuSelect}
 			onclose={() => {
 				menuTarget = null;

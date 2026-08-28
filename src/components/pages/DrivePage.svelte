@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AccountRecord, FileRecord } from '../../lib/db/schema';
+	import type { AccountRecord, FileRecord, FolderRecord } from '../../lib/db/schema';
 	import {
 		detailTargetItem,
 		detailTargetName,
@@ -43,6 +43,8 @@
 	let detailsSheetOpen = $state(false);
 	let moveOpen = $state(false);
 	let clearConfirmOpen = $state(false);
+	let renameFolder = $state<FolderRecord | null>(null);
+	let moveFolder = $state<FolderRecord | null>(null);
 
 	const phone = $derived(viewportStore.phone);
 	const tablet = $derived(viewportStore.tablet);
@@ -186,6 +188,15 @@
 		menuPosition = position;
 	};
 
+	/**
+	 * フォルダ作成ダイアログを開く
+	 * @param parentId - 作成先の親フォルダID(ルート直下はnull)
+	 */
+	const openCreateFolder = (parentId: string | null) => {
+		createParentId = parentId;
+		createOpen = true;
+	};
+
 	/** 選択中の項目のダウンロードを操作キューへ積む */
 	const downloadSelection = () => {
 		driveTasks.download(account, deleteTargets);
@@ -216,23 +227,6 @@
 		previewFile = null;
 		selectIfUnselected('file', file.id);
 		detailsSheetOpen = true;
-	};
-
-	/**
-	 * OSからドロップされたファイル・フォルダのアップロードを操作キューへ積む
-	 * @param targetFolderId - ドロップ先のフォルダID(ルートはnull)
-	 * @param transfer - ドロップされたデータ
-	 */
-	const handleDropFiles = (targetFolderId: string | null, transfer: DataTransfer) => {
-		const _ = driveTasks.uploadDropped(account, { transfer, targetFolderId });
-	};
-
-	/**
-	 * ツールバーで選ばれたファイルを表示中フォルダへアップロードする
-	 * @param files - アップロードするファイル
-	 */
-	const handleUploadFiles = (files: File[]) => {
-		driveTasks.uploadFiles(account, { files, targetFolderId: driveStore.currentFolderId });
 	};
 
 	/**
@@ -333,14 +327,12 @@
 		detailsSheetOpen = false;
 	}}
 	onpreviewfile={(file) => (previewFile = file)}
-	oncreatefolder={() => {
-		createParentId = driveStore.currentFolderId;
-		createOpen = true;
-	}}
-	oncreatefolderat={(parentId) => {
-		createParentId = parentId;
-		createOpen = true;
-	}}
+	oncreatefolder={() => openCreateFolder(driveStore.currentFolderId)}
+	oncreatefolderat={openCreateFolder}
+	onrenamefolder={(folder) => (renameFolder = folder)}
+	onmovefolder={(folder) => (moveFolder = folder)}
+	ondragstartfolder={(folderId) => drag.startDetached('folder', folderId)}
+	onregistermenucloser={drag.registerMenu}
 	onrename={() => {
 		renameOpen = true;
 	}}
@@ -352,8 +344,11 @@
 	ondragstartitem={drag.startItem}
 	ondragenditem={drag.end}
 	ondropitems={drag.drop}
-	ondropfiles={handleDropFiles}
-	onuploadfiles={handleUploadFiles}
+	ondropfiles={(targetFolderId, transfer) => {
+		const _ = driveTasks.uploadDropped(account, { transfer, targetFolderId });
+	}}
+	onuploadfiles={(files) =>
+		driveTasks.uploadFiles(account, { files, targetFolderId: driveStore.currentFolderId })}
 	ondownloadselection={downloadSelection}
 	onopenmenu={handleOpenMenu}
 	searchQuery={searchResult === null ? null : searchStore.query}
@@ -421,6 +416,10 @@
 	{renameInitial}
 	{deleteTargets}
 	bind:clearConfirmOpen
+	bind:renameFolder
+	bind:moveFolder
+	childrenMap={driveStore.childrenMap}
+	{phone}
 	clearCount={effectiveKeys.length}
 	onclearselection={() => {
 		selectionStore.clear();

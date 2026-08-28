@@ -122,3 +122,20 @@ export const ancestorIds = (
 
 	return path;
 };
+
+/**
+ * 子フォルダ一覧の索引からフォルダを探す
+ * @param childrenMap - 親キーごとの子フォルダ一覧
+ * @param folderId - 探すフォルダID
+ * @returns 見つかったフォルダ。なければnull
+ */
+export const findFolder = (childrenMap: Record<string, FolderRecord[]>, folderId: string) => {
+	for (const bucket of Object.values(childrenMap)) {
+		const hit = bucket.find((folder) => folder.id === folderId);
+		if (hit !== undefined) {
+			return hit;
+		}
+	}
+
+	return null;
+};
